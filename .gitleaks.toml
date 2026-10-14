@@ -1,0 +1,11 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Local-only files that are git-ignored and expected to hold secrets"
+paths = [
+    '''(^|/)\.env$''',
+    '''(^|/)\.venv/''',
+    '''(^|/)data/''',
+    '''(^|/)artifacts/''',
+]

@@ -1,0 +1,48 @@
+# Build the `api` image and deploy it to Cloud Run.
+name: deploy-model-api
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # Workload Identity Federation
+
+env:
+  REGION: asia-southeast1
+  SERVICE: evaku-model-api
+  IMAGE: ${{ vars.GCP_REGION_REGISTRY }}/${{ vars.GCP_PROJECT_ID }}/evaku/model-api
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push image
+        run: |
+          gcloud auth configure-docker "${{ vars.GCP_REGION_REGISTRY }}" --quiet
+          docker build --target api -t "$IMAGE:${{ github.sha }}" .
+          docker push "$IMAGE:${{ github.sha }}"
+
+      - uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: ${{ env.IMAGE }}:${{ github.sha }}
+          flags: >-
+            --memory=2Gi --cpu=2 --min-instances=0 --max-instances=2
+            --allow-unauthenticated
+          env_vars: |
+            APP_ENV=production
+            DATA_VERSION=${{ vars.DATA_VERSION }}
+            MODEL_VERSION=${{ vars.MODEL_VERSION }}
+          secrets: |
+            MODEL_API_KEY=model-api-key:latest

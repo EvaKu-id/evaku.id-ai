@@ -1,0 +1,33 @@
+# Region config. Copy to config/regions/<regency>.yaml and point REGION_CONFIG at it.
+name: example-regency
+bbox: [114.9, -3.0, 115.6, -2.4] # [min_lon, min_lat, max_lon, max_lat], EPSG:4326
+utm_epsg: 32750 # metric CRS for distances (see geo/crs.py utm_epsg)
+
+osm_extract: data/raw/indonesia-latest.osm.pbf
+worldpop: data/raw/worldpop_idn_2020_100m.tif
+dem: data/raw/copernicus_dem_glo30.tif
+village_boundaries: data/raw/villages.gpkg
+
+rivers:
+  - river_id: main-river
+    name: Main river
+    glofas_point: [115.2, -2.7]
+
+passability_cm:
+  car: 30
+  truck: 60
+
+score_weights: # must sum to 1
+  isolated_population: 0.35
+  vulnerable_share: 0.20
+  no_health_facility: 0.20
+  isolation_duration: 0.15
+  access_difficulty: 0.10
+
+evacuation:
+  safety_margin_m: 1.0
+  max_sites: 3
+
+simulation:
+  max_water_level_m: 5.0
+  fallback_step_cm: 10

@@ -1,0 +1,730 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Evaku Model API",
+    "description": "Internal API for simulation and routing. Called only by the Next.js backend.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/simulation": {
+      "post": {
+        "tags": [
+          "simulation"
+        ],
+        "summary": "Simulate",
+        "operationId": "simulate_simulation_post",
+        "parameters": [
+          {
+            "name": "x-model-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Model-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not implemented"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/route": {
+      "post": {
+        "tags": [
+          "route"
+        ],
+        "summary": "Route",
+        "operationId": "route_route_post",
+        "parameters": [
+          {
+            "name": "x-model-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Model-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RouteRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RouteResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not implemented"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/recalc": {
+      "post": {
+        "tags": [
+          "recalc"
+        ],
+        "summary": "Recalc",
+        "operationId": "recalc_recalc_post",
+        "parameters": [
+          {
+            "name": "x-model-key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Model-Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecalcRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationResponse"
+                }
+              }
+            }
+          },
+          "501": {
+            "description": "Not implemented"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BoatPoint": {
+        "properties": {
+          "lon": {
+            "type": "number",
+            "title": "Lon"
+          },
+          "lat": {
+            "type": "number",
+            "title": "Lat"
+          },
+          "water_distance_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Water Distance M"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lon",
+          "lat",
+          "water_distance_m"
+        ],
+        "title": "BoatPoint"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status",
+            "default": "ok"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "data_version": {
+            "type": "string",
+            "title": "Data Version"
+          },
+          "model_version": {
+            "type": "string",
+            "title": "Model Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "version",
+          "data_version",
+          "model_version"
+        ],
+        "title": "HealthResponse"
+      },
+      "LineString": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "LineString",
+            "title": "Type",
+            "default": "LineString"
+          },
+          "coordinates": {
+            "items": {
+              "prefixItems": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "type": "array",
+              "maxItems": 2,
+              "minItems": 2
+            },
+            "type": "array",
+            "title": "Coordinates",
+            "description": "[lon, lat] pairs, EPSG:4326"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "coordinates"
+        ],
+        "title": "LineString"
+      },
+      "RecalcRequest": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "corrections": {
+            "items": {
+              "$ref": "#/components/schemas/RoadCorrection"
+            },
+            "type": "array",
+            "minItems": 1,
+            "title": "Corrections"
+          },
+          "hub_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hub Ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "run_id",
+          "corrections"
+        ],
+        "title": "RecalcRequest"
+      },
+      "RoadChange": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Edge Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RoadCondition",
+            "description": "0 safe, 1 limited, 2 cut, 3 unknown"
+          },
+          "depth_cm": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Depth Cm"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edge_id",
+          "status"
+        ],
+        "title": "RoadChange"
+      },
+      "RoadCondition": {
+        "type": "integer",
+        "enum": [
+          0,
+          1,
+          2,
+          3
+        ],
+        "title": "RoadCondition"
+      },
+      "RoadCorrection": {
+        "properties": {
+          "edge_id": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Edge Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RoadCondition"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "edge_id",
+          "status"
+        ],
+        "title": "RoadCorrection"
+      },
+      "RouteRequest": {
+        "properties": {
+          "village_id": {
+            "type": "string",
+            "title": "Village Id"
+          },
+          "vehicle": {
+            "$ref": "#/components/schemas/Vehicle",
+            "default": "car"
+          },
+          "hub_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hub Id",
+            "description": "Default: nearest reachable hub"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id",
+            "description": "Route on a published run"
+          },
+          "param_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Param Hash",
+            "description": "Route on a cached simulation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "village_id"
+        ],
+        "title": "RouteRequest"
+      },
+      "RouteResponse": {
+        "properties": {
+          "geojson": {
+            "$ref": "#/components/schemas/LineString"
+          },
+          "distance_m": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Distance M"
+          },
+          "minutes": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Minutes"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "land",
+              "land_boat"
+            ],
+            "title": "Mode"
+          },
+          "boat_point": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoatPoint"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "geojson",
+          "distance_m",
+          "minutes",
+          "mode"
+        ],
+        "title": "RouteResponse"
+      },
+      "SimulationRequest": {
+        "properties": {
+          "river_id": {
+            "type": "string",
+            "minLength": 1,
+            "title": "River Id",
+            "description": "rivers.river_id"
+          },
+          "water_level_m": {
+            "type": "number",
+            "maximum": 5.0,
+            "minimum": 0.0,
+            "title": "Water Level M",
+            "description": "Water level above normal, in meters"
+          },
+          "vehicle": {
+            "$ref": "#/components/schemas/Vehicle",
+            "default": "car"
+          },
+          "hub_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hub Ids",
+            "description": "logistics_hubs.id to route from; default: all active hubs"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "river_id",
+          "water_level_m"
+        ],
+        "title": "SimulationRequest"
+      },
+      "SimulationResponse": {
+        "properties": {
+          "param_hash": {
+            "type": "string",
+            "title": "Param Hash"
+          },
+          "data_version": {
+            "type": "string",
+            "title": "Data Version"
+          },
+          "roads": {
+            "items": {
+              "$ref": "#/components/schemas/RoadChange"
+            },
+            "type": "array",
+            "title": "Roads",
+            "description": "Only segments that are not safe"
+          },
+          "villages": {
+            "items": {
+              "$ref": "#/components/schemas/VillageResult"
+            },
+            "type": "array",
+            "title": "Villages"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/Summary"
+          },
+          "ms": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Ms",
+            "description": "Compute time in milliseconds"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "param_hash",
+          "data_version",
+          "roads",
+          "villages",
+          "summary",
+          "ms"
+        ],
+        "title": "SimulationResponse"
+      },
+      "Summary": {
+        "properties": {
+          "isolated_villages": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Isolated Villages"
+          },
+          "isolated_population": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Isolated Population"
+          },
+          "cut_road_km": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Cut Road Km"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "isolated_villages",
+          "isolated_population",
+          "cut_road_km"
+        ],
+        "title": "Summary"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "Vehicle": {
+        "type": "string",
+        "enum": [
+          "car",
+          "truck"
+        ],
+        "title": "Vehicle"
+      },
+      "VillageAccessStatus": {
+        "type": "string",
+        "enum": [
+          "reachable",
+          "partially_isolated",
+          "fully_isolated"
+        ],
+        "title": "VillageAccessStatus"
+      },
+      "VillageResult": {
+        "properties": {
+          "village_id": {
+            "type": "string",
+            "title": "Village Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VillageAccessStatus"
+          },
+          "isolated_population": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Isolated Population"
+          },
+          "priority_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Priority Score"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "village_id",
+          "status",
+          "isolated_population"
+        ],
+        "title": "VillageResult"
+      }
+    }
+  }
+}

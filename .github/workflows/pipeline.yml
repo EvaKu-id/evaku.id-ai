@@ -1,0 +1,54 @@
+# Scheduled pipeline (forecast + radar + write + export + notify).
+name: pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "replay or live"
+        default: live
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: pipeline
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install (pipeline extra)
+        env:
+          # Read access to the ML repo for the pinned evaku_ml package.
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: url.https://x-access-token:${{ secrets.ML_REPO_TOKEN }}@github.com/.insteadOf
+          GIT_CONFIG_VALUE_0: https://github.com/
+        run: uv sync --frozen --no-dev --extra pipeline
+
+      - name: Run pipeline
+        env:
+          MODEL_VERSION: ${{ vars.MODEL_VERSION }}
+          DATA_VERSION: ${{ vars.DATA_VERSION }}
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          NEXT_BASE_URL: ${{ vars.NEXT_BASE_URL }}
+          PIPELINE_SECRET: ${{ secrets.PIPELINE_SECRET }}
+          HEALTHCHECKS_URL: ${{ secrets.HEALTHCHECKS_URL }}
+          GEE_SERVICE_ACCOUNT: ${{ vars.GEE_SERVICE_ACCOUNT }}
+          GEE_KEY_JSON: ${{ secrets.GEE_KEY_JSON }}
+        run: |
+          printf '%s' "$GEE_KEY_JSON" > "$RUNNER_TEMP/gee-key.json"
+          export GEE_KEY_FILE="$RUNNER_TEMP/gee-key.json"
+          uv run evaku-pipeline run --mode "${{ inputs.mode || 'live' }}"

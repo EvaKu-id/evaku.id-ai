@@ -1,0 +1,25 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+.env
+*.json.key
+gee-key*.json
+
+# Data and model artifacts
+data/**
+!data/**/
+!data/**/.gitkeep
+artifacts/**
+!artifacts/.gitkeep
+
+.idea/
+.vscode/
+.DS_Store
+
+md/

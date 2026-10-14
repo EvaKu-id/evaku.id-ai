@@ -1,0 +1,18 @@
+# Local development override: `make dev`.
+services:
+  api:
+    image: evaku-ai-api-dev
+    build:
+      target: dev
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: sync+restart
+          path: ./config
+          target: /app/config
+        - action: rebuild
+          path: pyproject.toml
+        - action: rebuild
+          path: uv.lock
