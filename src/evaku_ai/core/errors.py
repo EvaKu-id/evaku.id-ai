@@ -16,3 +16,15 @@ class InvalidInputError(EvakuError):
 
 class InvalidModelPackageError(EvakuError):
     pass
+
+
+class DownloadError(EvakuError):
+    pass
+
+
+class ChecksumMismatchError(DownloadError):
+    pass
+
+
+class ExternalToolError(EvakuError):
+    pass

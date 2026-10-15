@@ -89,3 +89,24 @@ def test_mask_must_be_bool_per_edge(mask):
 def test_graph_rejects_invalid_arrays(changes, message):
     with pytest.raises(InvalidInputError, match=message):
         replace(small_graph(), **changes)
+
+
+def test_custom_weights_pick_the_shortest_parallel_edge():
+    graph = RoadGraph(
+        edge_u=np.array([0, 1]),
+        edge_v=np.array([1, 0]),
+        travel_s=np.array([10.0, 50.0]),
+        length_m=np.array([900.0, 400.0]),
+        hand_min=np.zeros(2),
+        is_bridge=np.zeros(2, dtype=bool),
+        node_x=np.zeros(2),
+        node_y=np.zeros(2),
+    )
+    assert to_csr(graph)[0, 1] == 10.0
+    assert to_csr(graph, weights=graph.length_m)[0, 1] == 400.0
+
+
+@pytest.mark.parametrize("weights", [np.array([1.0]), np.array([1.0, 0.0, 1.0, 1.0])])
+def test_custom_weights_must_match_and_be_positive(weights):
+    with pytest.raises(InvalidInputError, match="weights"):
+        to_csr(small_graph(), weights=weights)

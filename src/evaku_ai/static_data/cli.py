@@ -3,11 +3,25 @@ from pathlib import Path
 import typer
 
 from evaku_ai.static_data import release
-from evaku_ai.static_data.builders import facilities, graph, hand, population, tiles
+from evaku_ai.static_data.builders import (
+    bundle,
+    facilities,
+    graph,
+    hand,
+    hand_objects,
+    population,
+    tiles,
+    villages,
+)
 
 app = typer.Typer(help="Build and release static data", no_args_is_help=True)
 
-REGION = typer.Option(Path("config/regions/example.yaml"), help="Region config file")
+REGION = typer.Option(Path("config/regions/aceh-tamiang.yaml"), help="Region config file")
+
+
+@app.command("build-villages", help="Village and district boundaries from the configured source")
+def build_villages(region: Path = REGION) -> None:
+    villages.build(region)
 
 
 @app.command("build-graph", help="Road graph from the OSM .pbf extract")
@@ -25,9 +39,19 @@ def build_population(region: Path = REGION) -> None:
     population.build(region)
 
 
-@app.command("build-hand", help="HAND raster and HAND per edge, population pixel, facility")
+@app.command("build-hand", help="HAND raster, streams, and river basins from the DEM")
 def build_hand(region: Path = REGION) -> None:
     hand.build(region)
+
+
+@app.command("build-hand-objects", help="HAND per road edge, node, facility, and village")
+def build_hand_objects(region: Path = REGION) -> None:
+    hand_objects.build(region)
+
+
+@app.command("build-bundle", help="Engine bundle data/static/{version}/ for the model API")
+def build_bundle(version: str, region: Path = REGION) -> None:
+    bundle.build(region, version)
 
 
 @app.command("build-tiles", help="Vector tiles jalan.pmtiles and desa.pmtiles for the web map")

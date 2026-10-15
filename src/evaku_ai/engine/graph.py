@@ -55,14 +55,17 @@ class RoadGraph:
         return int(self.edge_u.shape[0])
 
 
-def to_csr(graph: RoadGraph, passable: BoolArray | None = None) -> sparse.csr_matrix:
+def to_csr(
+    graph: RoadGraph, passable: BoolArray | None = None, weights: FloatArray | None = None
+) -> sparse.csr_matrix:
     keep = _edge_mask(passable, graph.n_edges)
-    u, v, w = graph.edge_u[keep], graph.edge_v[keep], graph.travel_s[keep]
+    cost = graph.travel_s if weights is None else _check_weights(weights, graph.n_edges)
+    u, v, w = graph.edge_u[keep], graph.edge_v[keep], cost[keep]
     rows = np.concatenate([u, v])
     cols = np.concatenate([v, u])
     data = np.concatenate([w, w])
 
-    # Building a CSR from COO sums duplicate entries, so drop all but the fastest first.
+    # Building a CSR from COO sums duplicate entries, so keep only the cheapest parallel edge.
     order = np.lexsort((data, cols, rows))
     rows, cols, data = rows[order], cols[order], data[order]
     first = np.ones(rows.shape[0], dtype=bool)
@@ -70,6 +73,16 @@ def to_csr(graph: RoadGraph, passable: BoolArray | None = None) -> sparse.csr_ma
 
     shape = (graph.n_nodes, graph.n_nodes)
     return sparse.csr_matrix((data[first], (rows[first], cols[first])), shape=shape)
+
+
+def _check_weights(weights: FloatArray, n_edges: int) -> FloatArray:
+    cost = np.asarray(weights, dtype=np.float64)
+    if cost.shape != (n_edges,):
+        raise InvalidInputError(f"weights must have length {n_edges}")
+    # Zero weights would vanish from the sparse matrix and silently disconnect the edge.
+    if not np.all(np.isfinite(cost) & (cost > 0)):
+        raise InvalidInputError("weights must be finite and > 0")
+    return cost
 
 
 def _edge_mask(passable: BoolArray | None, n_edges: int) -> BoolArray:

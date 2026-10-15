@@ -81,7 +81,7 @@ types from this file. All endpoints except `/health` require the `X-Model-Key` h
 | Endpoint | Status |
 | --- | --- |
 | `GET /health` | done |
-| `POST /simulation` | returns 501 for now |
+| `POST /simulation` | done; loads `data/static/{DATA_VERSION}/` at startup (production refuses to start without it; locally it answers 503, and `ENGINE_DATA=synthetic` serves a generated demo network) |
 | `POST /route` | returns 501 for now |
 | `POST /recalc` (Should) | returns 501 for now |
 
@@ -91,8 +91,8 @@ types from this file. All endpoints except `/health` require the `X-Model-Key` h
 | --- | --- | --- |
 | (core) | everything | numpy, scipy, pandas, pydantic, httpx, pyyaml |
 | `api` | Cloud Run image | fastapi, uvicorn |
-| `geo` | pipeline, static data | geopandas, shapely, pyogrio, rasterio, pyarrow |
-| `pipeline` | GitHub Actions | `geo` + earthengine-api, onnxruntime, lightgbm, psycopg, boto3, osmnx, scikit-image, whitebox, typer |
+| `geo` | pipeline, static data | geopandas, shapely, pyogrio, rasterio, pyarrow, zstandard |
+| `pipeline` | GitHub Actions | `geo` + earthengine-api, onnxruntime, lightgbm, psycopg, boto3, osmnx, scikit-image, typer |
 
 Versions are locked in `uv.lock`. Add a dependency with `uv add --optional <extra> <package>`.
 
@@ -101,6 +101,23 @@ Versions are locked in `uv.lock`. Add a dependency with `uv add --optional <extr
 `data/` (raw, interim, processed) and `artifacts/` (downloaded model packages) are git-ignored.
 Static data is released to R2 `data/static/{version}/`; model packages come from R2
 `model/{version}/`, selected by `MODEL_VERSION`.
+
+## Earth Engine access
+
+The project is registered for noncommercial Earth Engine use (Community tier, no billing needed).
+No service account key file is ever created.
+
+- Laptop: sign in with your own Google account, then run a test call.
+
+  ```bash
+  uv run --extra pipeline python -c "import ee; ee.Authenticate()"
+  uv run --extra pipeline python -c "import ee; ee.Initialize(project='<GCP_PROJECT_ID>'); \
+    print(ee.ImageCollection('COPERNICUS/S1_GRD').filterDate('2025-11-28','2025-11-29').size().getInfo())"
+  ```
+
+  A number printed means access works. Credentials stay in `~/.config/earthengine/`; never commit or share them.
+- GitHub Actions: the pipeline signs in as the `evaku-pipeline` service account through Workload Identity
+  Federation (no JSON key). Its email goes in `GEE_SERVICE_ACCOUNT`.
 
 ## Versions used for the demo
 

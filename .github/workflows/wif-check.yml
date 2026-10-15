@@ -1,0 +1,80 @@
+# Manual check that GitHub Actions reaches Google Cloud through Workload Identity Federation,
+# without any key file. Read-only: it lists resources and reads one Earth Engine collection.
+name: wif-check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  EARTHENGINE_API: earthengine-api==1.7.48
+  # Aceh Tamiang and a week around the November 2025 flood (replay backup event).
+  EE_BBOX: "97.70,3.86,98.31,4.56"
+  EE_START: "2025-11-20"
+  EE_END: "2025-12-01"
+
+jobs:
+  deployer:
+    name: deployer can reach Artifact Registry and Cloud Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Identity and read-only calls
+        run: |
+          gcloud auth list
+          gcloud artifacts repositories list --project="${{ vars.GCP_PROJECT_ID }}" \
+            --format="table(name.basename():label=REPOSITORY,name.segment(3):label=LOCATION,format)"
+          gcloud run services list --project="${{ vars.GCP_PROJECT_ID }}" --region=asia-southeast1 \
+            --format="table(metadata.name,status.url)"
+
+  pipeline:
+    name: pipeline service account can read Earth Engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: evaku-pipeline@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
+
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Count Sentinel-1 scenes over the region
+        env:
+          GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+        run: |
+          uv run --no-project --with "$EARTHENGINE_API" python - <<'EOF'
+          import os
+
+          import ee
+          import google.auth
+
+          scopes = [
+              "https://www.googleapis.com/auth/earthengine.readonly",
+              "https://www.googleapis.com/auth/cloud-platform",
+          ]
+          credentials, _ = google.auth.default(scopes=scopes)
+          ee.Initialize(credentials, project=os.environ["GCP_PROJECT_ID"])
+
+          bbox = [float(v) for v in os.environ["EE_BBOX"].split(",")]
+          scenes = (
+              ee.ImageCollection("COPERNICUS/S1_GRD")
+              .filterBounds(ee.Geometry.Rectangle(bbox))
+              .filterDate(os.environ["EE_START"], os.environ["EE_END"])
+          )
+          count = scenes.size().getInfo()
+          print(f"Sentinel-1 scenes {os.environ['EE_START']}..{os.environ['EE_END']}: {count}")
+          if count == 0:
+              raise SystemExit("Earth Engine answered but returned no scenes; check the bbox and dates")
+          print("first scene:", scenes.first().get("system:index").getInfo())
+          EOF

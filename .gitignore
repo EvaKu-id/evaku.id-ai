@@ -23,3 +23,4 @@ artifacts/**
 .DS_Store
 
 md/
+tests/

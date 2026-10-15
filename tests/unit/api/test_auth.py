@@ -11,9 +11,9 @@ def test_protected_endpoints_reject_missing_or_wrong_key(client, headers):
     assert res.status_code == 401
 
 
-def test_valid_key_reaches_stub(client, auth):
+def test_valid_key_passes_auth(client, auth):
     res = client.post("/simulation", json=SIMULATION, headers=auth)
-    assert res.status_code == 501
+    assert res.status_code == 503
 
 
 def test_unconfigured_key_returns_503(client):

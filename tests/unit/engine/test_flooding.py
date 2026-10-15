@@ -4,9 +4,16 @@ import numpy as np
 import pytest
 
 from evaku_ai.core.errors import InvalidInputError
-from evaku_ai.domain.enums import RoadCondition
-from evaku_ai.domain.rules import PassabilityThresholds, road_condition
-from evaku_ai.engine.flooding import bridge_approach_depth, depth_from_water_level, road_status
+from evaku_ai.domain.enums import RoadCondition, Vehicle
+from evaku_ai.domain.rules import PassabilityThresholds, passable, road_condition
+from evaku_ai.engine.flooding import (
+    bridge_approach_depth,
+    depth_from_observation,
+    depth_from_water_level,
+    edge_status,
+    passable_edges,
+    road_status,
+)
 from evaku_ai.engine.graph import RoadGraph
 from tests.fixtures.small_graph import small_graph
 
@@ -114,3 +121,53 @@ def test_no_bridges_returns_same_depths():
 def test_bridge_depth_length_must_match():
     with pytest.raises(InvalidInputError, match="depth_cm"):
         bridge_approach_depth(small_graph(), np.array([0.0]))
+
+
+@pytest.mark.parametrize("vehicle", list(Vehicle))
+def test_passable_edges_follow_domain_rule(vehicle):
+    status = np.array([SAFE, LIMITED, CUT, UNKNOWN], dtype=np.int8)
+    expected = [passable(RoadCondition(code), vehicle) for code in status]
+    np.testing.assert_array_equal(passable_edges(status, vehicle), expected)
+
+
+def test_passable_edges_empty():
+    assert passable_edges(np.array([], dtype=np.int8), Vehicle.CAR).shape == (0,)
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        np.array([0, 4], dtype=np.int8),
+        np.array([-1], dtype=np.int8),
+        np.zeros((2, 2), dtype=np.int8),
+    ],
+)
+def test_passable_edges_rejects_bad_status(status):
+    with pytest.raises(InvalidInputError, match="status"):
+        passable_edges(status, Vehicle.TRUCK)
+
+
+def test_depth_from_observation_converts_and_keeps_unknown():
+    depth = depth_from_observation(np.array([0.0, 0.3, 0.61, np.nan]))
+    np.testing.assert_allclose(depth[:3], [0.0, 30.0, 61.0])
+    assert np.isnan(depth[3])
+    assert depth_from_observation(np.array([np.nan])).shape == (1,)
+
+
+@pytest.mark.parametrize("bad", [-0.1, np.inf, -np.inf])
+def test_depth_from_observation_rejects_bad_values(bad):
+    with pytest.raises(InvalidInputError, match="observed depth"):
+        depth_from_observation(np.array([0.2, bad]))
+
+
+@pytest.mark.parametrize(
+    ("depth_cm", "expected"),
+    [(30.0, SAFE), (30.5, LIMITED), (60.0, LIMITED), (60.5, CUT), (np.nan, UNKNOWN)],
+)
+def test_edge_status_judges_bridges_by_their_approach(depth_cm, expected):
+    graph = small_graph()
+    depth = np.full(graph.n_edges, depth_cm)
+    depth[graph.is_bridge] = 500.0
+    status, effective = edge_status(graph, depth)
+    assert (status == expected).all()
+    np.testing.assert_array_equal(effective, bridge_approach_depth(graph, depth))

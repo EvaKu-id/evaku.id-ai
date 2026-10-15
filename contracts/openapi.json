@@ -73,8 +73,8 @@
               }
             }
           },
-          "501": {
-            "description": "Not implemented"
+          "503": {
+            "description": "Static data is not loaded"
           },
           "422": {
             "description": "Validation Error",

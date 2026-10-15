@@ -4,8 +4,8 @@ from scipy.sparse import csgraph
 
 from evaku_ai.core.errors import InvalidInputError
 from evaku_ai.domain.arrays import BoolArray, FloatArray, StatusArray
-from evaku_ai.domain.enums import RoadCondition
-from evaku_ai.domain.rules import PassabilityThresholds
+from evaku_ai.domain.enums import RoadCondition, Vehicle
+from evaku_ai.domain.rules import PassabilityThresholds, passable
 from evaku_ai.engine.graph import RoadGraph
 
 CM_PER_M = 100.0
@@ -22,6 +22,14 @@ def depth_from_water_level(
             raise InvalidInputError("connected must be a bool array shaped like hand_min")
         depth[~connected] = 0.0
     return depth
+
+
+def depth_from_observation(depth_m: FloatArray) -> FloatArray:
+    depth = np.asarray(depth_m, dtype=float)
+    known = depth[~np.isnan(depth)]
+    if known.size and (not np.isfinite(known).all() or known.min() < 0):
+        raise InvalidInputError("observed depth must be finite and >= 0 (NaN for unknown)")
+    return depth * CM_PER_M
 
 
 def bridge_approach_depth(graph: RoadGraph, depth_cm: FloatArray) -> FloatArray:
@@ -62,3 +70,22 @@ def road_status(
     status[depth <= thresholds.car_cm] = RoadCondition.SAFE
     status[np.isnan(depth)] = RoadCondition.UNKNOWN
     return status
+
+
+def edge_status(
+    graph: RoadGraph,
+    depth_cm: FloatArray,
+    thresholds: PassabilityThresholds = PassabilityThresholds(),
+) -> tuple[StatusArray, FloatArray]:
+    depth = bridge_approach_depth(graph, depth_cm)
+    return road_status(depth, thresholds), depth
+
+
+def passable_edges(status: StatusArray, vehicle: Vehicle) -> BoolArray:
+    codes = np.asarray(status)
+    if codes.ndim != 1:
+        raise InvalidInputError("status must be a 1-D array")
+    if codes.size and (codes.min() < 0 or codes.max() >= len(RoadCondition)):
+        raise InvalidInputError(f"status codes must be in 0..{len(RoadCondition) - 1}")
+    table = np.array([passable(condition, vehicle) for condition in RoadCondition])
+    return table[codes.astype(np.intp)]

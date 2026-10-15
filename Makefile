@@ -2,7 +2,7 @@
 	test-integration api openapi up dev down
 
 install:
-	uv sync --extra api --group dev
+	uv sync --extra api --extra geo --group dev
 
 install-all:
 	uv sync --all-extras --group dev

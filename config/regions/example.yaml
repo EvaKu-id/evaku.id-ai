@@ -1,21 +1,104 @@
-# Region config. Copy to config/regions/<regency>.yaml and point REGION_CONFIG at it.
-name: example-regency
+# Region config template. Copy to config/regions/<region_id>.yaml (the file name must match
+# region_id) and point REGION_CONFIG at it.
+region_id: example
+name: Kabupaten Contoh
+province: Contoh
+regency_code: "00.00" # Kemendagri
+bps_code: "0000" # BPS; village_id uses BPS codes
 bbox: [114.9, -3.0, 115.6, -2.4] # [min_lon, min_lat, max_lon, max_lat], EPSG:4326
-utm_epsg: 32750 # metric CRS for distances (see geo/crs.py utm_epsg)
-
-osm_extract: data/raw/indonesia-latest.osm.pbf
-worldpop: data/raw/worldpop_idn_2020_100m.tif
-dem: data/raw/copernicus_dem_glo30.tif
-village_boundaries: data/raw/villages.gpkg
+dem_bbox: [114.7, -3.2, 115.8, -2.2] # must contain bbox; covers the river catchment for HAND
 
 rivers:
   - river_id: main-river
     name: Main river
-    glofas_point: [115.2, -2.7]
+    glofas_point: [115.2, -2.7] # [lon, lat]
 
+replay:
+  name: Example flood
+  peak_date: 2025-01-15
+  days_before: 3 # replay runs from peak_date minus days_before up to peak_date
+
+inputs: # relative paths under data/
+  osm_extract:
+    path: data/raw/region-latest.osm.pbf
+    url: https://download.geofabrik.de/asia/indonesia-latest.osm.pbf
+    sha256: "1111111111111111111111111111111111111111111111111111111111111111"
+    source: OpenStreetMap contributors via Geofabrik
+    license: ODbL 1.0
+  population: # 100 m totals; age shares from 1 km bands (under 5 = bands 0 and 1, elderly = 60+)
+    year: 2026
+    total_100m:
+      path: data/raw/worldpop/pop_100m.tif
+      url: https://data.worldpop.org/GIS/example/pop_100m.tif
+      sha256: "2222222222222222222222222222222222222222222222222222222222222222"
+      source: WorldPop
+      license: CC BY 4.0
+    total_1km:
+      path: data/raw/worldpop/pop_1km.tif
+      url: https://data.worldpop.org/GIS/example/pop_1km.tif
+      sha256: "3333333333333333333333333333333333333333333333333333333333333333"
+      source: WorldPop
+      license: CC BY 4.0
+    under5_1km:
+      - path: data/raw/worldpop/t_00.tif
+        url: https://data.worldpop.org/GIS/example/t_00.tif
+        sha256: "4444444444444444444444444444444444444444444444444444444444444444"
+        source: WorldPop
+        license: CC BY 4.0
+    elderly_1km:
+      - path: data/raw/worldpop/t_60.tif
+        url: https://data.worldpop.org/GIS/example/t_60.tif
+        sha256: "5555555555555555555555555555555555555555555555555555555555555555"
+        source: WorldPop
+        license: CC BY 4.0
+  dem: # Copernicus GLO-30 1-degree tiles covering dem_bbox
+    - path: data/raw/copernicus/Copernicus_DSM_COG_10_S03_00_E115_00_DEM.tif
+      url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_S03_00_E115_00_DEM/Copernicus_DSM_COG_10_S03_00_E115_00_DEM.tif
+      sha256: "6666666666666666666666666666666666666666666666666666666666666666"
+      source: Copernicus DEM GLO-30 (ESA, AWS Open Data)
+      license: Copernicus DEM GLO-30 licence; attribution required
+  overture_places: # POI supplement for sparse OSM areas
+    release: "2026-09-23.0"
+    path: data/raw/overture_places_example.parquet
+    license: CDLA Permissive 2.0 (Meta, Microsoft); Apache 2.0 (Foursquare); CC0 1.0 (AllThePlaces)
+  village_boundaries: # downloaded and checked against sha256
+    path: data/raw/admin_boundaries.gdb.zip
+    url: https://example.org/admin_boundaries.gdb.zip
+    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    source: Example boundary provider
+    license: CC BY 4.0
+
+# Optional overrides below; when left out, defaults from src/evaku_ai/domain/rules.py apply.
 passability_cm:
-  car: 30
-  truck: 60
+  car_cm: 30
+  truck_cm: 60
+
+isolation:
+  fully_share: 0.5
+  partial_share: 0.1
+  delay_factor: 3.0
+
+road_network: # highway types without a speed are left out of the graph
+  buffer_m: 5000
+  speeds_kmh:
+    motorway: 80
+    trunk: 60
+    primary: 50
+    secondary: 40
+    tertiary: 35
+    unclassified: 30
+    residential: 25
+    living_street: 15
+    service: 15
+    track: 15
+
+hand: # stream threshold is the upstream area at which a channel starts
+  stream_threshold_km2: 1.0
+  breach_max_dist_m: 3000
+  burn_depth_m: 10 # carved along OSM rivers to steer flow; HAND ignores it
+  pour_point_snap_m: 2500
+  sample_step_m: 15 # road sampling step for hand_min
+  crossing_buffer_m: 45 # skip samples this close to a road-stream crossing
 
 score_weights: # must sum to 1
   isolated_population: 0.35
@@ -24,10 +107,7 @@ score_weights: # must sum to 1
   isolation_duration: 0.15
   access_difficulty: 0.10
 
-evacuation:
+evacuation: # candidate sites need hand >= water level + safety margin
   safety_margin_m: 1.0
-  max_sites: 3
-
-simulation:
-  max_water_level_m: 5.0
-  fallback_step_cm: 10
+  max_distance_m: 10000
+  walk_speed_kmh: 4.0

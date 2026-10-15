@@ -41,9 +41,45 @@ training and in the pipeline. This repo pins both.
 
 ## Data flow
 
+0. Every step reads the active region from `REGION_CONFIG` (default
+   `config/regions/aceh-tamiang.yaml`) through `adapters/region.load_region`, which parses it with
+   `yaml.safe_load` and validates it as `domain/region.RegionConfig` (bbox, DEM extent, rivers,
+   replay dates, optional rule overrides; rule defaults stay in `domain/rules.py`).
+   Village and district boundaries come from the OCHA HDX COD-AB dataset (BPS, CC BY-IGO;
+   attribution required); `village_id` is the 10-digit BPS code.
+   The road graph is cut from a pinned Geofabrik OpenStreetMap snapshot (ODbL; maps must credit
+   "© OpenStreetMap contributors") and stored as `road_nodes`/`road_segments` GeoParquet.
+   Facilities and logistics hubs combine OSM with Overture Maps Places (pinned release; CDLA
+   Permissive 2.0 / Apache 2.0 / CC0 by source), with official BPBD locations from the region config
+   taking priority.
+   Population comes from WorldPop Global2 R2025A constrained rasters (DOI 10.5258/SOTON/WP00841,
+   CC BY 4.0; attribution required): the 100 m total is split into under-5 and 60+ counts with
+   age shares from the 1 km age bands, then each pixel is assigned to the nearest road node in
+   the same village.
+   HAND is computed at 30 m in UTM from Copernicus DEM GLO-30 tiles on AWS Open Data (pinned
+   checksums; attribution required: "© DLR e.V. 2010-2014 and © Airbus Defence and Space GmbH
+   2014-2018 provided under COPERNICUS by the European Union and ESA; all rights reserved") with
+   WhiteboxTools 2.4.0, run as a checksum-pinned conda-forge binary. OSM rivers are burned into the
+   DEM to steer flow (HAND itself is measured on the unburned surface) and always count as streams.
+   The same run delineates the
+   basin of each configured river from its GloFAS point down to the sea; objects outside a basin
+   are not flooded by that river in simulations.
+   HAND is then attached to objects: the minimum along each road edge (sampled every 15 m, skipping
+   45 m around road-stream crossings that are culverts or untagged bridges), the population-weighted
+   median of the WorldPop pixels behind each road node, the value at each facility, and a median per
+   village. Each object also records the river basin it belongs to.
+   Radar runs reach the same road status through a depth raster (meters, EPSG:32647, nodata outside
+   the image): the maximum depth along each edge goes through the same bridge and threshold rules
+   as simulations.
+   Forecast runs also plan evacuation: for each high-probability village, up to three facilities
+   that stay above the forecast water level plus a safety margin, reached by road under current
+   conditions, with the first horizon at which the shown route is cut.
 1. `static_data` builds the graph, HAND, population, and facilities, then releases them to R2
    `data/static/{version}/`.
-2. The `api` image loads that bundle into memory at startup. `/simulation` turns a water level
+2. The `api` image loads that bundle into memory at startup. Its engine part is `scenario.npz`
+   (plain arrays, no geometry, read without pickle and without pyarrow) plus `manifest.json`
+   (version, SHA-256, counts, source checksums). In production a missing or mismatched bundle stops
+   startup. `/simulation` turns a water level
    into road status, reachability, and isolated villages; `/route` returns a land or land + boat
    route.
 3. `pipeline` runs forecast (Open-Meteo + GEE features -> LightGBM -> water level -> engine) and
@@ -63,6 +99,6 @@ depth comes from.
 - Features: `contracts/fitur.json` in `evaku-ml`, computed by the `evaku_ml` package pinned by tag.
 - Model packages: R2 `model/{version}/`, selected with `MODEL_VERSION`, verified against
   `manifest.json` checksums.
-- Static data: R2 `data/static/{version}/` (GeoParquet), used by the pipeline, the `api` image,
-  and ML for topographic features.
+- Static data: R2 `data/static/{version}/`: GeoParquet for the pipeline and ML, and
+  `scenario.npz` + `manifest.json` for the `api` image.
 - Other R2 paths: `peta/*.pmtiles` (maps) and `cadangan/...` (fallback scenarios, replay copies).

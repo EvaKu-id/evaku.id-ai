@@ -1,0 +1,131 @@
+# Kabupaten Aceh Tamiang. Rules (passability_cm, isolation, score_weights) are optional
+# overrides; defaults live in src/evaku_ai/domain/rules.py.
+region_id: aceh-tamiang
+name: Kabupaten Aceh Tamiang
+province: Aceh
+regency_code: "11.16" # Kemendagri
+bps_code: "1114" # BPS; village_id uses BPS codes
+bbox: [97.70, 3.86, 98.31, 4.56] # [min_lon, min_lat, max_lon, max_lat], EPSG:4326
+dem_bbox: [97.25, 3.65, 98.40, 4.65] # Tamiang basin (4,658 km2) and regency + 0.05 deg
+
+rivers:
+  - river_id: tamiang
+    name: Sungai Tamiang
+    glofas_point: [98.125, 4.375] # [lon, lat] of the GloFAS cell used for discharge
+
+replay:
+  name: Banjir Sungai Tamiang Oktober 2026
+  peak_date: 2026-10-13
+  days_before: 3
+replay_backup:
+  name: Banjir Aceh Tamiang November 2025
+  peak_date: 2025-11-28
+  days_before: 3
+
+inputs:
+  osm_extract:
+    path: data/raw/sumatra-261014.osm.pbf
+    url: https://download.geofabrik.de/asia/indonesia/sumatra-261014.osm.pbf
+    sha256: "abde6812313729d7d08fcc23e9206d26116bc328c7a1f0c4de18489c0a6c217c"
+    source: OpenStreetMap contributors via Geofabrik (snapshot 2026-10-14)
+    license: ODbL 1.0
+  population: # children under 5 = bands 0 and 1; elderly = 60+ (Indonesian definition)
+    year: 2026
+    total_100m:
+      path: data/raw/worldpop/idn_pop_2026_CN_100m_R2025A_v1.tif
+      url: https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/IDN/v1/100m/constrained/idn_pop_2026_CN_100m_R2025A_v1.tif
+      sha256: "444f70196f96cc2ddd91480a0d12267104f85dd2a9d985a5077e8b9cc5dd9df7"
+      source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+      license: CC BY 4.0
+    total_1km:
+      path: data/raw/worldpop/idn_pop_2026_CN_1km_R2025A_UA_v1.tif
+      url: https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_pop_2026_CN_1km_R2025A_UA_v1.tif
+      sha256: "be3c1aabb30c5f50336d6d0d7dec5cb114b0b689fc7c2115f5fd7e903bbe9f4b"
+      source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+      license: CC BY 4.0
+    under5_1km:
+      - path: data/raw/worldpop/idn_t_00_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_00_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "80e1cb3df1490560d090c30047f3e9f45873eb4270f44eb346965f6068ce45ac"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_01_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_01_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "fa5e0a8757bd9e6c2c2258ab0bb0db8f38051378533bae758d9656833811023e"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+    elderly_1km:
+      - path: data/raw/worldpop/idn_t_60_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_60_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "a2bdd653af886c1a8a643c2d4dfa68a33ad6f6e5283abf0487a35cefa5cc6dd5"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_65_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_65_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "3552d465182496a7941724a4bf189fb9cb9e09024b9a077197d88e395c1ac86b"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_70_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_70_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "3b5ba387de23f1d7778cb591d4da42665cfd4745cd1afc1a8b2431537ecbff9c"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_75_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_75_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "a9e41e29b55a7d4943ab761f4a6c4c3d485562afd0e563e4cf2ec6500a1e812c"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_80_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_80_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "336d26ce770111f760ba695072c21ef907c7269ff4f5c9991604421595b70469"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_85_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_85_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "6e7447bcd962bb7e646674ee6b64a7b4564276ebff030afb145ac20b28cd5ff2"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+      - path: data/raw/worldpop/idn_t_90_2026_CN_1km_R2025A_UA_v1.tif
+        url: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/2026/IDN/v1/1km_ua/constrained/idn_t_90_2026_CN_1km_R2025A_UA_v1.tif
+        sha256: "abc2dbdd0bcaa24fc92c37707a64e3697d026b66eeb6143c4f005dab543eb741"
+        source: WorldPop Global2 R2025A v1 (2026), DOI 10.5258/SOTON/WP00841
+        license: CC BY 4.0
+  dem: # Copernicus GLO-30 1-degree tiles covering dem_bbox
+    - path: data/raw/copernicus/Copernicus_DSM_COG_10_N03_00_E097_00_DEM.tif
+      url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N03_00_E097_00_DEM/Copernicus_DSM_COG_10_N03_00_E097_00_DEM.tif
+      sha256: "1799498da38657572b914ada559e0026ee1d34e2682db1b0afd102e0ef130d6d"
+      source: Copernicus DEM GLO-30 (ESA, AWS Open Data)
+      license: Copernicus DEM GLO-30 licence; attribution required
+    - path: data/raw/copernicus/Copernicus_DSM_COG_10_N03_00_E098_00_DEM.tif
+      url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N03_00_E098_00_DEM/Copernicus_DSM_COG_10_N03_00_E098_00_DEM.tif
+      sha256: "45f9dbc852ddc212db07339fc99f6b4db427843e9131c606aafc1f4396ed1f31"
+      source: Copernicus DEM GLO-30 (ESA, AWS Open Data)
+      license: Copernicus DEM GLO-30 licence; attribution required
+    - path: data/raw/copernicus/Copernicus_DSM_COG_10_N04_00_E097_00_DEM.tif
+      url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N04_00_E097_00_DEM/Copernicus_DSM_COG_10_N04_00_E097_00_DEM.tif
+      sha256: "b7683fd91cfed4dd4c49df02c018009905f8fd6e637ae25e7eccef140bf753f6"
+      source: Copernicus DEM GLO-30 (ESA, AWS Open Data)
+      license: Copernicus DEM GLO-30 licence; attribution required
+    - path: data/raw/copernicus/Copernicus_DSM_COG_10_N04_00_E098_00_DEM.tif
+      url: https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N04_00_E098_00_DEM/Copernicus_DSM_COG_10_N04_00_E098_00_DEM.tif
+      sha256: "b31cd3c26c161ca20d9590e6bb51a162e53caed5f1601d5625d9415334516f16"
+      source: Copernicus DEM GLO-30 (ESA, AWS Open Data)
+      license: Copernicus DEM GLO-30 licence; attribution required
+  overture_places: # POI supplement for sparse OSM areas
+    release: "2026-09-23.0"
+    path: data/raw/overture_places_aceh-tamiang_2026-09-23.0.parquet
+    license: CDLA Permissive 2.0 (Meta, Microsoft); Apache 2.0 (Foursquare); CC0 1.0 (AllThePlaces)
+  village_boundaries:
+    path: data/raw/idn_admin_boundaries.gdb.zip
+    url: https://data.humdata.org/dataset/84a1d98a-790b-4d66-9d14-bbfa48500802/resource/c740a308-0a63-46d6-ab15-b041e62eff58/download/idn_admin_boundaries.gdb.zip
+    sha256: "640c62398b19de310be321b83ccdd56c710cf796247028f453e172ff33a4e308"
+    source: BPS via OCHA HDX, COD-AB Indonesia (boundaries valid from 2020-04-01)
+    license: CC BY-IGO
+
+hand: # stream threshold is the upstream area at which a channel starts
+  stream_threshold_km2: 5.0 # owner decision after comparing 0.5-25 km2 with OSM rivers
+
+evacuation: # owner decisions 2026-10-16: every facility type, 10 km by road
+  safety_margin_m: 1.0
+  max_distance_m: 10000
+  walk_speed_kmh: 4.0

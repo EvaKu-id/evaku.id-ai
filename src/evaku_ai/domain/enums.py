@@ -8,6 +8,13 @@ class RoadCondition(IntEnum):
     UNKNOWN = 3
 
 
+class NodeImpact(IntEnum):
+    NORMAL = 0
+    DELAYED = 1
+    TRUCK_ONLY = 2
+    CUT = 3
+
+
 class VillageAccessStatus(StrEnum):
     REACHABLE = "reachable"
     PARTIALLY_ISOLATED = "partially_isolated"
@@ -42,3 +49,13 @@ class FacilityType(StrEnum):
 class LocationSource(StrEnum):
     OSM = "osm"
     BPBD = "bpbd"
+    OVERTURE = "overture"
+
+
+class HubType(StrEnum):
+    REGENT_OFFICE = "regent_office"
+    BPBD_OFFICE = "bpbd_office"
+    AIRPORT = "airport"
+    PORT = "port"
+    COMMAND_POST = "command_post"
+    COMMAND_POST_ESTIMATED = "command_post_estimated"

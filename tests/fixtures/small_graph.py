@@ -1,18 +1,21 @@
 """Tiny road network with known answers, for engine tests.
 
-    hub(0) --e0-- 1 --e1-- 2 --e2(bridge)-- 3 (village B)
+    hub(0) --e0-- 1 --e1-- 2 --e2(bridge)-- 3
                   |
                   e3
                   |
-                  4 (village A)
+                  4
 
+Village A is node 4; village B is nodes 2 and 3 (100 people each).
 e1 is low (hand_min 0.5 m): a 1 m water level cuts it, so node 2 and village B are isolated
 by car, while village A stays reachable.
 """
 
 import numpy as np
 
+from evaku_ai.engine.accessibility import NO_NODE, NodePopulation
 from evaku_ai.engine.graph import RoadGraph
+from evaku_ai.engine.simulation import ScenarioData
 
 
 def small_graph() -> RoadGraph:
@@ -29,3 +32,31 @@ def small_graph() -> RoadGraph:
 
 
 HUB_NODES = np.array([0])
+VILLAGE_IDS = ["A", "B"]
+
+
+def small_population() -> NodePopulation:
+    return NodePopulation(
+        village=np.array([NO_NODE, NO_NODE, 1, 1, 0]),
+        total=np.array([0.0, 0.0, 100.0, 100.0, 50.0]),
+        under5=np.array([0.0, 0.0, 10.0, 12.0, 5.0]),
+        elderly=np.array([0.0, 0.0, 8.0, 9.0, 4.0]),
+    )
+
+
+def small_scenario(**changes: object) -> ScenarioData:
+    fields = {
+        "graph": small_graph(),
+        "edge_ids": np.array([100, 101, 102, 103]),
+        "rivers": ["r1", "r2"],
+        "edge_river": np.zeros(4, dtype=int),
+        "node_river": np.zeros(5, dtype=int),
+        "node_hand": np.array([6.0, 5.0, 0.8, 3.0, 4.0]),
+        "population": small_population(),
+        "village_ids": VILLAGE_IDS,
+        "hub_nodes": {10: 0},
+        "health_nodes": np.array([4]),
+        "health_hand": np.array([4.0]),
+        "health_river": np.array([0]),
+    }
+    return ScenarioData(**(fields | changes))
