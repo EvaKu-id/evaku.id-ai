@@ -1,22 +1,55 @@
-# Build the `api` image and deploy it to Cloud Run.
+# Build the `api` image, push it to Artifact Registry, and deploy it to Cloud Run.
 name: deploy-model-api
 
 on:
   workflow_dispatch:
+  push:
+    tags: ["model-api-v*"]
 
 permissions:
   contents: read
   id-token: write # Workload Identity Federation
 
+concurrency:
+  group: deploy-model-api
+  cancel-in-progress: false
+
 env:
   REGION: asia-southeast1
   SERVICE: evaku-model-api
+  RUNTIME_SERVICE_ACCOUNT: evaku-model-api@${{ vars.GCP_PROJECT_ID }}.iam.gserviceaccount.com
   IMAGE: ${{ vars.GCP_REGION_REGISTRY }}/${{ vars.GCP_PROJECT_ID }}/evaku/model-api
+  DATA_DIR: /tmp/evaku-data
+  MODEL_VERSION: ${{ vars.MODEL_VERSION || 'dev' }}
 
 jobs:
   deploy:
+    # Production is deployed only from main or a release tag, never from a feature branch.
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/model-api-v')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
+      - name: Check required variables
+        env:
+          PROJECT: ${{ vars.GCP_PROJECT_ID }}
+          REGISTRY: ${{ vars.GCP_REGION_REGISTRY }}
+          PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          DEPLOYER: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
+          DATA: ${{ vars.DATA_VERSION }}
+        run: |
+          missing=""
+          for name in PROJECT REGISTRY PROVIDER DEPLOYER DATA; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::GitHub variables are empty or missing for:$missing"
+            exit 1
+          fi
+          if [[ ! "$DATA" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}\.[0-9]+$ ]]; then
+            echo "::error::DATA_VERSION must look like 2026-10-16.2, got '$DATA'"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       - uses: google-github-actions/auth@v2
@@ -32,17 +65,63 @@ jobs:
           docker build --target api -t "$IMAGE:${{ github.sha }}" .
           docker push "$IMAGE:${{ github.sha }}"
 
-      - uses: google-github-actions/deploy-cloudrun@v2
+      - id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.SERVICE }}
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}:${{ github.sha }}
           flags: >-
-            --memory=2Gi --cpu=2 --min-instances=0 --max-instances=2
+            --service-account=${{ env.RUNTIME_SERVICE_ACCOUNT }}
+            --memory=2Gi --cpu=2 --cpu-boost
+            --concurrency=4 --min-instances=0 --max-instances=2
             --allow-unauthenticated
+          env_vars_update_strategy: overwrite
           env_vars: |
             APP_ENV=production
+            DATA_DIR=${{ env.DATA_DIR }}
             DATA_VERSION=${{ vars.DATA_VERSION }}
-            MODEL_VERSION=${{ vars.MODEL_VERSION }}
+            MODEL_VERSION=${{ env.MODEL_VERSION }}
+          secrets_update_strategy: overwrite
           secrets: |
             MODEL_API_KEY=model-api-key:latest
+            R2_ENDPOINT=r2-endpoint:latest
+            R2_ACCESS_KEY_ID=r2-access-key-id:latest
+            R2_SECRET_ACCESS_KEY=r2-secret-access-key:latest
+
+      - name: Smoke test
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+          EXPECT_DATA: ${{ vars.DATA_VERSION }}
+          EXPECT_MODEL: ${{ env.MODEL_VERSION }}
+        run: |
+          set -euo pipefail
+          code=000
+          for _ in 1 2 3 4 5; do
+            code=$(curl -s -o health.json -w "%{http_code}" --max-time 30 "$URL/health" || true)
+            [ "$code" = 200 ] && break
+            sleep 5
+          done
+          [ "$code" = 200 ] || { echo "::error::/health answered $code"; exit 1; }
+          jq -e --arg d "$EXPECT_DATA" --arg m "$EXPECT_MODEL" \
+            '.status == "ok" and .data_version == $d and .model_version == $m' health.json \
+            || { echo "::error::/health reports an unexpected version:"; cat health.json; exit 1; }
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 -X POST "$URL/simulation" \
+            -H "Content-Type: application/json" \
+            -d '{"river_id":"tamiang","water_level_m":1.0,"vehicle":"car"}' || true)
+          [ "$code" = 401 ] || { echo "::error::/simulation without a key answered $code, expected 401"; exit 1; }
+
+      - name: Summary
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          revision=$(gcloud run services describe "$SERVICE" --region "$REGION" \
+            --format='value(status.latestReadyRevisionName)')
+          {
+            echo "### Model API deployed"
+            echo "- URL: $URL"
+            echo "- Revision: $revision"
+            echo "- Image: $IMAGE:${{ github.sha }}"
+            echo "- Data version: ${{ vars.DATA_VERSION }}"
+            echo "- Model version: $MODEL_VERSION"
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -435,6 +435,7 @@ dependencies = [
 
 [package.optional-dependencies]
 api = [
+    { name = "boto3" },
     { name = "fastapi" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -462,6 +463,9 @@ pipeline = [
     { name = "typer" },
     { name = "zstandard" },
 ]
+storage = [
+    { name = "boto3" },
+]
 
 [package.dev-dependencies]
 dev = [
@@ -478,9 +482,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "boto3", marker = "extra == 'pipeline'", specifier = ">=1.35" },
+    { name = "boto3", marker = "extra == 'storage'", specifier = ">=1.35" },
     { name = "earthengine-api", marker = "extra == 'pipeline'", specifier = ">=1.0" },
     { name = "evaku-ai", extras = ["geo"], marker = "extra == 'pipeline'" },
+    { name = "evaku-ai", extras = ["storage"], marker = "extra == 'api'" },
+    { name = "evaku-ai", extras = ["storage"], marker = "extra == 'pipeline'" },
     { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.115" },
     { name = "geopandas", marker = "extra == 'geo'", specifier = ">=1.0" },
     { name = "httpx", specifier = ">=0.27" },
@@ -503,7 +509,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.30" },
     { name = "zstandard", marker = "extra == 'geo'", specifier = ">=0.23" },
 ]
-provides-extras = ["api", "geo", "pipeline"]
+provides-extras = ["storage", "api", "geo", "pipeline"]
 
 [package.metadata.requires-dev]
 dev = [

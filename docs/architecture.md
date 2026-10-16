@@ -99,6 +99,20 @@ depth comes from.
 - Features: `contracts/fitur.json` in `evaku-ml`, computed by the `evaku_ml` package pinned by tag.
 - Model packages: R2 `model/{version}/`, selected with `MODEL_VERSION`, verified against
   `manifest.json` checksums.
-- Static data: R2 `data/static/{version}/`: GeoParquet for the pipeline and ML, and
-  `scenario.npz` + `manifest.json` for the `api` image.
+- Static data: R2 `evaku-private/data/static/{version}/` (version like `2026-10-16.2`, never overwritten):
+  `manifest.json` + `scenario.npz` for the `api` image (downloaded at startup when absent), `geo/` with
+  GeoParquet, `hand.tif`, build metadata, and `village_static_features.csv` for the pipeline and ML,
+  `README.md` with attributions, and `release.json` (every file with size and SHA-256, plus git commit and
+  dirty flag). `release.json` is uploaded last, so its presence marks a complete release.
+  `data/static/latest.json` is the only object that is overwritten; it only moves forward.
 - Other R2 paths: `peta/*.pmtiles` (maps) and `cadangan/...` (fallback scenarios, replay copies).
+
+## Deploy
+
+`deploy-model-api` builds the `api` image tagged with the commit SHA, pushes it to Artifact Registry, and deploys
+it to Cloud Run. It signs in through Workload Identity Federation as `evaku-deployer` (no key files) and only runs
+from `main` or a `model-api-v*` tag. The service runs as the `evaku-model-api` service account with 2 vCPU, 2 GiB,
+concurrency 4, and 0 to 2 instances. `MODEL_API_KEY` and the `R2_*` settings come from Secret Manager; `DATA_VERSION`
+and `MODEL_VERSION` come from GitHub Variables. The container downloads its data bundle from R2 into `/tmp` at
+startup and exits when that fails, so a broken revision never receives traffic. A smoke test checks `/health` and that
+`/simulation` rejects a request without a key.

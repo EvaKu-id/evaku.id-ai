@@ -2,6 +2,7 @@ from pathlib import Path
 
 import typer
 
+from evaku_ai.core.logging import configure_logging
 from evaku_ai.static_data import release
 from evaku_ai.static_data.builders import (
     bundle,
@@ -17,6 +18,11 @@ from evaku_ai.static_data.builders import (
 app = typer.Typer(help="Build and release static data", no_args_is_help=True)
 
 REGION = typer.Option(Path("config/regions/aceh-tamiang.yaml"), help="Region config file")
+
+
+@app.callback()
+def main(verbose: bool = typer.Option(False, "--verbose", "-v", help="Log debug details")) -> None:
+    configure_logging("DEBUG" if verbose else "INFO")
 
 
 @app.command("build-villages", help="Village and district boundaries from the configured source")
@@ -59,9 +65,18 @@ def build_tiles(region: Path = REGION) -> None:
     tiles.build(region)
 
 
-@app.command("release", help="Upload data/static/{version}/ to R2")
-def release_cmd(version: str, region: Path = REGION) -> None:
-    release.run(version, region)
+@app.command("release", help="Stage data/static/{version}/ and upload it to R2 (never overwrites)")
+def release_cmd(
+    version: str,
+    region: Path = REGION,
+    resume: bool = typer.Option(False, help="Finish a partial upload of the same version"),
+) -> None:
+    release.run(version, region, resume=resume)
+
+
+@app.command("verify-release", help="Download a release from R2 and check every checksum")
+def verify_release_cmd(version: str) -> None:
+    release.verify(version)
 
 
 if __name__ == "__main__":

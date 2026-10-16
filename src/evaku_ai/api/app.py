@@ -9,12 +9,14 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 
 from evaku_ai import __version__
-from evaku_ai.adapters.bundle import read_bundle
+from evaku_ai.adapters.bundle import MANIFEST_FILE, read_bundle
+from evaku_ai.adapters.release import fetch_bundle
+from evaku_ai.adapters.storage import r2_storage
 from evaku_ai.api.cache import SimulationCache
 from evaku_ai.api.dependencies import require_model_key
 from evaku_ai.api.routers import health, recalc, route, simulation
 from evaku_ai.core.config import Settings, get_settings
-from evaku_ai.core.errors import DataNotLoadedError, InvalidInputError
+from evaku_ai.core.errors import ConfigurationError, DataNotLoadedError, InvalidInputError
 from evaku_ai.core.logging import configure_logging
 from evaku_ai.engine.synthetic import synthetic_scenario
 
@@ -39,7 +41,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 def ensure_bundle(settings: Settings) -> Path:
-    return settings.data_dir / "static" / settings.data_version
+    local = settings.data_dir / "static" / settings.data_version
+    if (local / MANIFEST_FILE).is_file() or not settings.r2_configured:
+        return local
+    started = time.perf_counter()
+    try:
+        storage = r2_storage(settings, settings.r2_bucket_private)
+    except ConfigurationError as exc:
+        raise DataNotLoadedError(str(exc)) from exc
+    fetch_bundle(storage, settings.data_version, local)
+    log.info(
+        "downloaded bundle %s from R2 in %.2f s",
+        settings.data_version,
+        time.perf_counter() - started,
+    )
+    return local
 
 
 def _load_bundle(app: FastAPI, settings: Settings) -> None:

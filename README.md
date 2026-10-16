@@ -90,9 +90,10 @@ types from this file. All endpoints except `/health` require the `X-Model-Key` h
 | Extra | Used by | Contents |
 | --- | --- | --- |
 | (core) | everything | numpy, scipy, pandas, pydantic, httpx, pyyaml |
-| `api` | Cloud Run image | fastapi, uvicorn |
+| `storage` | api, pipeline, static data | boto3 (Cloudflare R2) |
+| `api` | Cloud Run image | fastapi, uvicorn, `storage` |
 | `geo` | pipeline, static data | geopandas, shapely, pyogrio, rasterio, pyarrow, zstandard |
-| `pipeline` | GitHub Actions | `geo` + earthengine-api, onnxruntime, lightgbm, psycopg, boto3, osmnx, scikit-image, typer |
+| `pipeline` | GitHub Actions | `geo`, `storage` + earthengine-api, onnxruntime, lightgbm, psycopg, osmnx, scikit-image, typer |
 
 Versions are locked in `uv.lock`. Add a dependency with `uv add --optional <extra> <package>`.
 
@@ -101,6 +102,29 @@ Versions are locked in `uv.lock`. Add a dependency with `uv add --optional <extr
 `data/` (raw, interim, processed) and `artifacts/` (downloaded model packages) are git-ignored.
 Static data is released to R2 `data/static/{version}/`; model packages come from R2
 `model/{version}/`, selected by `MODEL_VERSION`.
+
+Release static data (needs the `R2_*` settings in `.env`; a version is never overwritten):
+
+```bash
+uv run evaku-static build-bundle 2026-10-16.2      # engine bundle in data/static/{version}/
+uv run evaku-static release 2026-10-16.2           # stage geo/ + README + release.json, upload to R2
+uv run evaku-static release 2026-10-16.2 --resume  # finish a partial upload of the same version
+uv run evaku-static verify-release 2026-10-16.2    # download it again and check every SHA-256
+```
+
+`data/static/latest.json` in the bucket points to the newest release. The API downloads
+`manifest.json` and `scenario.npz` of `DATA_VERSION` at startup when they are not on disk.
+
+## Deploy
+
+The model API runs on Cloud Run (`asia-southeast1`) and is deployed by `.github/workflows/deploy-model-api.yml`.
+
+- Trigger: run it manually from the Actions tab on `main`, or push a tag `model-api-v*`. Other branches are skipped.
+- GitHub Variables: `GCP_PROJECT_ID`, `GCP_REGION_REGISTRY`, `GCP_WIF_PROVIDER`, `GCP_DEPLOY_SERVICE_ACCOUNT`,
+  `DATA_VERSION` (a released version such as `2026-10-16.2`), and optionally `MODEL_VERSION` (default `dev`).
+- Secret Manager: `model-api-key`, `r2-endpoint`, `r2-access-key-id`, `r2-secret-access-key`, readable by `evaku-model-api`.
+- The workflow smoke-tests `/health` and the key check on `/simulation`; the revision only gets traffic once the bundle downloaded.
+- Roll back: `gcloud run services update-traffic evaku-model-api --region asia-southeast1 --to-revisions=<revision>=100`.
 
 ## Earth Engine access
 

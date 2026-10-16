@@ -28,3 +28,7 @@ class ChecksumMismatchError(DownloadError):
 
 class ExternalToolError(EvakuError):
     pass
+
+
+class StorageError(EvakuError):
+    pass

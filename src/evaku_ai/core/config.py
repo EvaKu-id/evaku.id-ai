@@ -44,6 +44,10 @@ class Settings(BaseSettings):
     gee_service_account: str | None = None
     gee_key_file: Path | None = None
 
+    @property
+    def r2_configured(self) -> bool:
+        return bool(self.r2_endpoint and self.r2_access_key_id and self.r2_secret_access_key)
+
     @model_validator(mode="after")
     def _no_synthetic_data_in_production(self) -> Self:
         if self.app_env == "production" and self.engine_data == "synthetic":

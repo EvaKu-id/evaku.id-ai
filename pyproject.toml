@@ -15,9 +15,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+storage = [
+    "boto3>=1.35",
+]
 api = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
+    "evaku-ai[storage]",
 ]
 geo = [
     "geopandas>=1.0",
@@ -33,7 +37,7 @@ pipeline = [
     "onnxruntime>=1.19",
     "lightgbm>=4.5",
     "psycopg[binary]>=3.2",
-    "boto3>=1.35",
+    "evaku-ai[storage]",
     "osmnx>=1.9",
     "scikit-image>=0.24",
     "typer>=0.12",
@@ -135,6 +139,7 @@ module = [
     "lightgbm.*",
     "ee.*",
     "boto3.*",
+    "botocore.*",
     "psycopg.*",
     "typer.*",
     "pyarrow.*",
