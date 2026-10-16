@@ -110,7 +110,11 @@ depth comes from.
   `README.md` with attributions, and `release.json` (every file with size and SHA-256, plus git commit and
   dirty flag). `release.json` is uploaded last, so its presence marks a complete release.
   `data/static/latest.json` is the only object that is overwritten; it only moves forward.
-- Other R2 paths: `peta/*.pmtiles` (maps) and `cadangan/...` (fallback scenarios, replay copies).
+- Map tiles: public bucket `evaku-maps`, `map/{version}/jalan.pmtiles` (layer `ruas`, `edge_id` as feature id
+  and attribute) and `desa.pmtiles` (layer `desa`), built by tippecanoe from the same processed files as the
+  bundle of that version. `tiles.json` (sizes, SHA-256, zooms, feature counts) is uploaded last; versioned files
+  are immutable and `map/latest.json` only moves forward. Flood tiles will go to `map/genangan/`.
+- Other R2 paths: `cadangan/...` (fallback scenarios, replay copies).
 
 ## Deploy
 

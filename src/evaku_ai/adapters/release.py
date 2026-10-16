@@ -1,7 +1,8 @@
 import logging
 import re
 import shutil
-from datetime import date, datetime
+import tempfile
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
@@ -34,6 +35,7 @@ CONTENT_TYPES = {
     ".csv": "text/csv",
     ".md": "text/markdown",
     ".npz": "application/octet-stream",
+    ".pmtiles": "application/vnd.pmtiles",
 }
 
 
@@ -153,11 +155,27 @@ def describe_files(root: Path, exclude: set[str]) -> list[ReleaseFile]:
     return found
 
 
-def read_latest(storage: Storage, scratch: Path) -> LatestPointer | None:
-    if storage.head(LATEST_KEY) is None:
+def read_latest(storage: Storage, scratch: Path, key: str = LATEST_KEY) -> LatestPointer | None:
+    if storage.head(key) is None:
         return None
-    local = storage.download(LATEST_KEY, scratch / "latest.json", MAX_RELEASE_JSON_BYTES)
+    local = storage.download(key, scratch / "latest.json", MAX_RELEASE_JSON_BYTES)
     return parse_latest(local.read_bytes())
+
+
+def advance_latest(
+    storage: Storage, key: str, version: str, prefix: str, cache_control: str | None = None
+) -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        scratch = Path(tmp)
+        current = read_latest(storage, scratch, key)
+        # latest.json only moves forward, so releasing an older version never rolls it back.
+        if current is not None and version_key(version) <= version_key(current.data_version):
+            log.info("%s stays at %s", key, current.data_version)
+            return
+        pointer = LatestPointer(data_version=version, released_at=datetime.now(UTC), prefix=prefix)
+        path = scratch / "latest-new.json"
+        path.write_text(pointer.model_dump_json(indent=2), encoding="utf-8")
+        storage.upload(path, key, CONTENT_TYPES[".json"], file_sha256(path), cache_control)
 
 
 def fetch_bundle(storage: Storage, version: str, dest: Path) -> Path:

@@ -110,6 +110,9 @@ uv run evaku-static build-bundle 2026-10-16.3      # engine bundle in data/stati
 uv run evaku-static release 2026-10-16.3           # stage geo/ + README + release.json, upload to R2
 uv run evaku-static release 2026-10-16.3 --resume  # finish a partial upload of the same version
 uv run evaku-static verify-release 2026-10-16.3    # download it again and check every SHA-256
+make tippecanoe                                    # build tippecanoe 2.79.0 into data/tools/ (once)
+uv run evaku-static build-tiles 2026-10-16.3       # jalan.pmtiles + desa.pmtiles in data/tiles/{version}/
+uv run evaku-static release-tiles 2026-10-16.3     # upload to the public bucket under map/{version}/
 ```
 
 `data/static/latest.json` in the bucket points to the newest release. The API downloads

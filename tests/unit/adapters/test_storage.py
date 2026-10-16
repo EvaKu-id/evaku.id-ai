@@ -56,6 +56,27 @@ def test_upload_sends_type_length_and_checksum_metadata(stubbed, tmp_path):
     stub.assert_no_pending_responses()
 
 
+def test_upload_sends_cache_control_only_when_given(stubbed, tmp_path):
+    store, stub = stubbed
+    local = tmp_path / "x.pmtiles"
+    local.write_bytes(b"abc")
+    stub.add_response(
+        "put_object",
+        {},
+        {
+            "Bucket": BUCKET,
+            "Key": "map/x.pmtiles",
+            "Body": ANY,
+            "ContentType": "application/vnd.pmtiles",
+            "ContentLength": 3,
+            "Metadata": {"sha256": "ab" * 32},
+            "CacheControl": "no-cache",
+        },
+    )
+    store.upload(local, "map/x.pmtiles", "application/vnd.pmtiles", "ab" * 32, "no-cache")
+    stub.assert_no_pending_responses()
+
+
 def test_upload_failure_is_a_storage_error(stubbed, tmp_path):
     store, stub = stubbed
     local = tmp_path / "x.csv"

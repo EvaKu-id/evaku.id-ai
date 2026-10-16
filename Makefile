@@ -1,5 +1,10 @@
 .PHONY: install install-all lint task-ids format typecheck security audit secrets-scan test coverage check \
-	test-integration api openapi up dev down
+	test-integration api openapi up dev down tippecanoe
+
+TIPPECANOE_TAG := 2.79.0
+TIPPECANOE_COMMIT := 68ab8dcc229f95b8b25877697d5e8d66783af503
+TIPPECANOE_DIR := data/tools/tippecanoe-$(TIPPECANOE_TAG)
+TIPPECANOE_SRC := data/tools/src/tippecanoe-$(TIPPECANOE_TAG)
 
 install:
 	uv sync --extra api --extra geo --group dev
@@ -67,3 +72,19 @@ dev:
 
 down:
 	docker compose --profile db --profile pipeline down
+
+# Built from a pinned commit; data/ is git-ignored.
+tippecanoe:
+	@if [ -x $(TIPPECANOE_DIR)/tippecanoe ]; then echo "tippecanoe $(TIPPECANOE_TAG) already built"; exit 0; fi; \
+	set -e; \
+	if [ ! -d $(TIPPECANOE_SRC) ]; then \
+		git clone --quiet --depth 1 --branch $(TIPPECANOE_TAG) https://github.com/felt/tippecanoe.git $(TIPPECANOE_SRC); \
+	fi; \
+	head=$$(git -C $(TIPPECANOE_SRC) rev-parse HEAD); \
+	if [ "$$head" != "$(TIPPECANOE_COMMIT)" ]; then \
+		echo "tippecanoe $(TIPPECANOE_TAG) is at $$head, expected $(TIPPECANOE_COMMIT)"; exit 1; \
+	fi; \
+	$(MAKE) -C $(TIPPECANOE_SRC) tippecanoe tippecanoe-decode; \
+	mkdir -p $(TIPPECANOE_DIR); \
+	cp $(TIPPECANOE_SRC)/tippecanoe $(TIPPECANOE_SRC)/tippecanoe-decode $(TIPPECANOE_DIR)/; \
+	rm -rf $(TIPPECANOE_SRC)

@@ -3,7 +3,7 @@ from pathlib import Path
 import typer
 
 from evaku_ai.core.logging import configure_logging
-from evaku_ai.static_data import release
+from evaku_ai.static_data import release, tiles_release
 from evaku_ai.static_data.builders import (
     bundle,
     facilities,
@@ -60,9 +60,23 @@ def build_bundle(version: str, region: Path = REGION) -> None:
     bundle.build(region, version)
 
 
-@app.command("build-tiles", help="Vector tiles jalan.pmtiles and desa.pmtiles for the web map")
-def build_tiles(region: Path = REGION) -> None:
-    tiles.build(region)
+@app.command(
+    "build-tiles", help="Vector tiles jalan.pmtiles and desa.pmtiles for data/tiles/{version}/"
+)
+def build_tiles(version: str) -> None:
+    tiles.build(version)
+
+
+@app.command(
+    "release-tiles", help="Upload data/tiles/{version}/ to R2 map/{version}/ (never overwrites)"
+)
+def release_tiles(version: str) -> None:
+    tiles_release.run(version)
+
+
+@app.command("verify-tiles", help="Check every tile file of a version in R2 against tiles.json")
+def verify_tiles(version: str) -> None:
+    tiles_release.verify(version)
 
 
 @app.command("release", help="Stage data/static/{version}/ and upload it to R2 (never overwrites)")

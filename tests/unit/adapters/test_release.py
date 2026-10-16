@@ -225,6 +225,9 @@ def test_latest_pointer(tmp_path):
     assert read_latest(storage, tmp_path) is None
     storage.objects[LATEST_KEY] = (pointer, "application/json", _sha(pointer))
     assert read_latest(storage, tmp_path).prefix == release_prefix(VERSION)
+    assert read_latest(storage, tmp_path, "map/latest.json") is None
+    storage.objects["map/latest.json"] = (pointer, "application/json", _sha(pointer))
+    assert read_latest(storage, tmp_path, "map/latest.json").data_version == VERSION
 
 
 def test_fetch_bundle_downloads_only_the_api_files(tmp_path):

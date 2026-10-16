@@ -1,7 +1,6 @@
 import logging
 import shutil
 import subprocess
-import tempfile
 import time
 from datetime import UTC, datetime
 from pathlib import Path
@@ -14,15 +13,13 @@ from evaku_ai.adapters.release import (
     LATEST_KEY,
     RELEASE_FILE,
     RELEASE_FORMAT,
-    LatestPointer,
     ReleaseManifest,
+    advance_latest,
     check_release_version,
     describe_files,
     parse_release,
-    read_latest,
     release_prefix,
     verify_release,
-    version_key,
 )
 from evaku_ai.adapters.storage import Storage, r2_storage
 from evaku_ai.core.config import get_settings
@@ -206,7 +203,7 @@ def upload(
     storage.upload(
         release_path, prefix + RELEASE_FILE, CONTENT_TYPES[".json"], file_sha256(release_path)
     )
-    _advance_latest(storage, version)
+    advance_latest(storage, LATEST_KEY, version, prefix)
     log.info(
         "released %s: %d files (%.1f MB sent) in %.0f s to %s",
         version,
@@ -256,19 +253,3 @@ def _check_sources(sources: dict[str, str], processed_dir: Path, version: str) -
                 f"{name} in {processed_dir} changed since bundle {version} was built; "
                 "build a new bundle version"
             )
-
-
-def _advance_latest(storage: Storage, version: str) -> None:
-    with tempfile.TemporaryDirectory() as tmp:
-        scratch = Path(tmp)
-        current = read_latest(storage, scratch)
-        # latest.json only moves forward, so releasing an older version never rolls it back.
-        if current is not None and version_key(version) <= version_key(current.data_version):
-            log.info("latest stays at %s", current.data_version)
-            return
-        pointer = LatestPointer(
-            data_version=version, released_at=datetime.now(UTC), prefix=release_prefix(version)
-        )
-        path = scratch / "latest-new.json"
-        path.write_text(pointer.model_dump_json(indent=2), encoding="utf-8")
-        storage.upload(path, LATEST_KEY, CONTENT_TYPES[".json"], file_sha256(path))

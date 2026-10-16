@@ -33,7 +33,14 @@ class Storage(Protocol):
 
     def head(self, key: str) -> ObjectInfo | None: ...
 
-    def upload(self, local: Path, key: str, content_type: str, sha256: str) -> None: ...
+    def upload(
+        self,
+        local: Path,
+        key: str,
+        content_type: str,
+        sha256: str,
+        cache_control: str | None = None,
+    ) -> None: ...
 
     def download(self, key: str, dest: Path, max_bytes: int) -> Path: ...
 
@@ -58,6 +65,7 @@ class S3Client(Protocol):
         ContentType: str,
         ContentLength: int,
         Metadata: Mapping[str, str],
+        CacheControl: str = ...,
     ) -> Mapping[str, object]: ...
 
     def get_object(self, *, Bucket: str, Key: str) -> Mapping[str, object]: ...
@@ -96,18 +104,36 @@ class R2Storage:
             raise StorageError(f"reading {self._bucket}/{key} failed: {exc}") from exc
         return ObjectInfo(key, _as_int(response.get("ContentLength")), _metadata_sha(response))
 
-    def upload(self, local: Path, key: str, content_type: str, sha256: str) -> None:
+    def upload(
+        self,
+        local: Path,
+        key: str,
+        content_type: str,
+        sha256: str,
+        cache_control: str | None = None,
+    ) -> None:
         size = local.stat().st_size
         try:
             with local.open("rb") as body:
-                self._client.put_object(
-                    Bucket=self._bucket,
-                    Key=key,
-                    Body=body,
-                    ContentType=content_type,
-                    ContentLength=size,
-                    Metadata={SHA256_META: sha256},
-                )
+                if cache_control is None:
+                    self._client.put_object(
+                        Bucket=self._bucket,
+                        Key=key,
+                        Body=body,
+                        ContentType=content_type,
+                        ContentLength=size,
+                        Metadata={SHA256_META: sha256},
+                    )
+                else:
+                    self._client.put_object(
+                        Bucket=self._bucket,
+                        Key=key,
+                        Body=body,
+                        ContentType=content_type,
+                        ContentLength=size,
+                        Metadata={SHA256_META: sha256},
+                        CacheControl=cache_control,
+                    )
         except (ClientError, BotoCoreError) as exc:
             raise StorageError(f"uploading {self._bucket}/{key} failed: {exc}") from exc
         log.info("uploaded %s/%s (%.1f MB)", self._bucket, key, size / 1e6)
