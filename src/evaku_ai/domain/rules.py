@@ -162,6 +162,17 @@ class EvacuationRules:
 
 
 @dataclass(frozen=True)
+class RouteRules:
+    boat_speed_kmh: float = 10.0
+
+    def __post_init__(self) -> None:
+        if not (math.isfinite(self.boat_speed_kmh) and self.boat_speed_kmh > 0):
+            raise ConfigurationError(
+                f"boat_speed_kmh must be finite and > 0, got {self.boat_speed_kmh}"
+            )
+
+
+@dataclass(frozen=True)
 class ScoreWeights:
     isolated_population: float = 0.35
     vulnerable_share: float = 0.20

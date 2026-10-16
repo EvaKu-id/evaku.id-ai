@@ -4,7 +4,7 @@ from collections import OrderedDict
 from threading import Lock
 
 from evaku_ai.api.schemas import SimulationRequest
-from evaku_ai.engine.simulation import SimulationResult
+from evaku_ai.engine.simulation import ScenarioData, SimulationResult, run_simulation
 
 HASH_CHARS = 16
 
@@ -40,3 +40,16 @@ class SimulationCache:
             self._items.move_to_end(key)
             while len(self._items) > self._size:
                 self._items.popitem(last=False)
+
+
+def cached_simulation(
+    cache: SimulationCache, scenario: ScenarioData, data_version: str, request: SimulationRequest
+) -> tuple[str, SimulationResult]:
+    key = param_hash(data_version, request)
+    result = cache.get(key)
+    if result is None:
+        result = run_simulation(
+            scenario, request.river_id, request.water_level_m, request.vehicle, request.hub_ids
+        )
+        cache.put(key, result)
+    return key, result

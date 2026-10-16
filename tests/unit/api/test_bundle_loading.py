@@ -14,7 +14,7 @@ from evaku_ai.api.app import create_app
 from evaku_ai.core.config import Settings, get_settings
 from evaku_ai.core.errors import DataNotLoadedError
 from evaku_ai.core.logging import JsonFormatter
-from evaku_ai.engine.synthetic import RIVER_ID, synthetic_scenario
+from evaku_ai.engine.synthetic import RIVER_ID, synthetic_geometry, synthetic_scenario
 from tests.fixtures.evacuation import sample_sites
 from tests.fixtures.storage import FakeStorage
 
@@ -40,6 +40,7 @@ def _bundle(tmp_path):
     write_bundle(
         synthetic_scenario(),
         sample_sites(),
+        synthetic_geometry(synthetic_scenario()),
         tmp_path / "static",
         data_version=VERSION,
         region_id="synthetic",
@@ -95,6 +96,7 @@ def _remote_release(tmp_path):
     source = write_bundle(
         synthetic_scenario(),
         sample_sites(),
+        synthetic_geometry(synthetic_scenario()),
         tmp_path / "source",
         data_version=VERSION,
         region_id="synthetic",

@@ -69,7 +69,7 @@ def test_stage_builds_the_full_release_folder(workspace):
     assert manifest.files == describe_files(root, exclude={RELEASE_FILE})
     assert {f.path for f in manifest.files} >= {"manifest.json", "scenario.npz", "README.md"}
     assert (manifest.git_commit, manifest.git_dirty) == (COMMIT, False)
-    assert manifest.bundle_format == 2 and manifest.region_id == "aceh-tamiang"
+    assert manifest.bundle_format == 3 and manifest.region_id == "aceh-tamiang"
     assert manifest.licenses == list(LICENSES)
     features = pd.read_csv(root / GEO_DIR / FEATURES_FILE, dtype={"village_id": str})
     assert features["village_id"].tolist() == ["1114000001", "1114000002"]

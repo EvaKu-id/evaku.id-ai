@@ -26,6 +26,11 @@ class Vehicle(StrEnum):
     TRUCK = "truck"
 
 
+class RouteMode(StrEnum):
+    LAND = "land"
+    LAND_BOAT = "land_boat"
+
+
 class RunType(StrEnum):
     RADAR = "radar"
     FORECAST = "forecast"

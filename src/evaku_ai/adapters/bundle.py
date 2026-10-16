@@ -12,6 +12,7 @@ from evaku_ai.adapters.download import file_sha256
 from evaku_ai.core.errors import DataNotLoadedError, InvalidInputError
 from evaku_ai.engine.bundle import BUNDLE_FORMAT, bundle_from_arrays, bundle_to_arrays
 from evaku_ai.engine.evacuation import EvacuationSites
+from evaku_ai.engine.graph import RoadGeometry
 from evaku_ai.engine.simulation import ScenarioData
 
 VERSION_PATTERN = r"^[0-9A-Za-z._-]{1,64}$"
@@ -37,6 +38,7 @@ class BundleManifest(BaseModel):
 class LoadedBundle:
     data: ScenarioData
     sites: EvacuationSites
+    geometry: RoadGeometry
     manifest: BundleManifest
 
 
@@ -49,6 +51,7 @@ def check_version(version: str) -> str:
 def write_bundle(
     data: ScenarioData,
     sites: EvacuationSites,
+    geometry: RoadGeometry,
     static_dir: Path,
     *,
     data_version: str,
@@ -62,7 +65,9 @@ def write_bundle(
     shutil.rmtree(part, ignore_errors=True)
     part.mkdir(parents=True)
     try:
-        np.savez_compressed(part / ARRAYS_FILE, allow_pickle=False, **bundle_to_arrays(data, sites))
+        np.savez_compressed(
+            part / ARRAYS_FILE, allow_pickle=False, **bundle_to_arrays(data, sites, geometry)
+        )
         manifest = BundleManifest(
             format=BUNDLE_FORMAT,
             data_version=data_version,
@@ -76,6 +81,7 @@ def write_bundle(
                 "hubs": len(data.hub_nodes),
                 "health_facilities": int(data.health_nodes.shape[0]),
                 "evacuation_sites": int(sites.facility_ids.shape[0]),
+                "edge_vertices": int(geometry.edge_coords.shape[0]),
             },
             sources=sources,
         )
@@ -100,10 +106,10 @@ def read_bundle(
     try:
         with np.load(arrays_path, allow_pickle=False) as stored:
             arrays = {key: stored[key] for key in stored.files}
-        data, sites = bundle_from_arrays(arrays)
+        data, sites, geometry = bundle_from_arrays(arrays)
     except (ValueError, InvalidInputError) as exc:
         raise DataNotLoadedError(f"bundle {bundle_dir} is invalid: {exc}") from exc
-    return LoadedBundle(data, sites, manifest)
+    return LoadedBundle(data, sites, geometry, manifest)
 
 
 def _manifest(bundle_dir: Path, expected_version: str) -> BundleManifest:

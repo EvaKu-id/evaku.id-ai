@@ -3,7 +3,7 @@ import pytest
 
 from evaku_ai.core.errors import InvalidInputError
 from evaku_ai.engine.bundle import KEYS, bundle_from_arrays, bundle_to_arrays
-from evaku_ai.engine.synthetic import synthetic_scenario
+from evaku_ai.engine.synthetic import synthetic_geometry, synthetic_scenario
 from tests.fixtures.evacuation import sample_sites
 
 
@@ -14,17 +14,23 @@ def _assert_same(left, right):
 
 
 def test_round_trip_keeps_every_array():
-    arrays = bundle_to_arrays(synthetic_scenario(), sample_sites())
+    arrays = bundle_to_arrays(
+        synthetic_scenario(), sample_sites(), synthetic_geometry(synthetic_scenario())
+    )
     assert set(arrays) == KEYS
-    rebuilt, sites = bundle_from_arrays(arrays)
-    _assert_same(bundle_to_arrays(rebuilt, sites), arrays)
+    rebuilt, sites, geometry = bundle_from_arrays(arrays)
+    _assert_same(bundle_to_arrays(rebuilt, sites, geometry), arrays)
     assert sites.types == ["school", "hospital"]
     assert rebuilt.hub_nodes == synthetic_scenario().hub_nodes
     assert rebuilt.rivers == synthetic_scenario().rivers
 
 
 def test_narrow_integer_types_are_widened():
-    arrays = dict(bundle_to_arrays(synthetic_scenario(), sample_sites()))
+    arrays = dict(
+        bundle_to_arrays(
+            synthetic_scenario(), sample_sites(), synthetic_geometry(synthetic_scenario())
+        )
+    )
     arrays["edge_u"] = arrays["edge_u"].astype(np.int32)
     arrays["edge_v"] = arrays["edge_v"].astype(np.int32)
     assert bundle_from_arrays(arrays)[0].graph.edge_u.dtype == np.int64
@@ -43,10 +49,16 @@ def test_narrow_integer_types_are_widened():
         (lambda a: a.__setitem__("rivers", np.array([1])), "rivers must hold text"),
         (lambda a: a.__setitem__("hub_ids", a["hub_ids"][:1]), "same length"),
         (lambda a: a.__setitem__("site_preferred", np.array([1, 0])), "site_preferred"),
+        (lambda a: a.pop("edge_coords"), "missing \\['edge_coords'\\]"),
+        (lambda a: a.__setitem__("edge_coords", a["edge_coords"][::-1].copy()), "edge_u"),
     ],
 )
 def test_bad_arrays_are_rejected(change, message):
-    arrays = dict(bundle_to_arrays(synthetic_scenario(), sample_sites()))
+    arrays = dict(
+        bundle_to_arrays(
+            synthetic_scenario(), sample_sites(), synthetic_geometry(synthetic_scenario())
+        )
+    )
     change(arrays)
     with pytest.raises(InvalidInputError, match=message):
         bundle_from_arrays(arrays)

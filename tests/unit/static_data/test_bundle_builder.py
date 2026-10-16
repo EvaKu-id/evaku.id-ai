@@ -132,6 +132,41 @@ def test_build_writes_a_readable_bundle(tmp_path):
     assert loaded.sites.preferred.tolist() == [True, False]
     assert loaded.sites.types == ["health_center", "school"]
     assert loaded.manifest.counts["evacuation_sites"] == 2
+    assert loaded.manifest.counts["edge_vertices"] == 6
+    assert loaded.geometry.edge_offsets.tolist() == [0, 2, 4, 6]
+
+
+def test_assemble_geometry_rounds_lon_lat_and_follows_edges(tmp_path):
+    out = _write_inputs(tmp_path / "processed")
+    geometry = builder.assemble_geometry(out)
+    nodes = gpd.read_parquet(out / "road_nodes.parquet").to_crs(4326)
+    np.testing.assert_allclose(geometry.node_lon, nodes.geometry.x, atol=1e-6)
+    assert np.array_equal(geometry.edge_coords, np.round(geometry.edge_coords, 6))
+    np.testing.assert_array_equal(geometry.edge_coords[1], geometry.edge_coords[2])
+
+
+def test_assemble_geometry_rejects_reversed_segments(tmp_path):
+    out = _write_inputs(tmp_path / "processed")
+    segments = gpd.read_parquet(out / "road_segments.parquet")
+    segments.loc[0, "geometry"] = segments.geometry.iloc[0].reverse()
+    segments.to_parquet(out / "road_segments.parquet")
+    with pytest.raises(InvalidInputError, match="edge_u"):
+        builder.assemble_geometry(out)
+
+
+def test_assemble_geometry_needs_ordered_ids(tmp_path):
+    out = _write_inputs(tmp_path / "processed")
+    nodes = gpd.read_parquet(out / "road_nodes.parquet")
+    nodes["node_id"] = nodes["node_id"][::-1].to_numpy()
+    nodes.to_parquet(out / "road_nodes.parquet")
+    with pytest.raises(InvalidInputError, match="node_id"):
+        builder.assemble_geometry(out)
+    out = _write_inputs(tmp_path / "other")
+    segments = gpd.read_parquet(out / "road_segments.parquet")
+    segments["edge_id"] = [2, 1, 0]
+    segments.to_parquet(out / "road_segments.parquet")
+    with pytest.raises(InvalidInputError, match="edge_id"):
+        builder.assemble_geometry(out)
 
 
 def test_build_rejects_bad_versions_and_missing_inputs(tmp_path):

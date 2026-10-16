@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from evaku_ai.domain.enums import RoadCondition, VillageAccessStatus
+from evaku_ai.domain.enums import RoadCondition, RouteMode, VillageAccessStatus
 
 
 @dataclass(frozen=True)
@@ -54,3 +54,22 @@ class EvacuationPlan:
     horizon_hours: int
     sites: list[EvacuationSite]
     unserved: list[str]
+
+
+@dataclass(frozen=True)
+class BoatPoint:
+    lon: float
+    lat: float
+    water_distance_m: float
+
+
+@dataclass(frozen=True)
+class VillageRoute:
+    village_id: str
+    hub_id: int
+    mode: RouteMode
+    coordinates: tuple[tuple[float, float], ...]
+    edge_ids: tuple[int, ...]
+    distance_m: float
+    minutes: float
+    boat_point: BoatPoint | None

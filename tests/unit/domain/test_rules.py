@@ -9,6 +9,7 @@ from evaku_ai.domain.rules import (
     IsolationRules,
     PassabilityThresholds,
     RoadNetworkRules,
+    RouteRules,
     ScoreWeights,
     passable,
     road_condition,
@@ -189,3 +190,13 @@ def test_evacuation_rules_defaults():
 def test_evacuation_rules_reject_invalid_values(changes, message):
     with pytest.raises(ConfigurationError, match=message):
         EvacuationRules(**changes)
+
+
+def test_route_rules_default_boat_speed():
+    assert RouteRules().boat_speed_kmh == 10.0
+
+
+@pytest.mark.parametrize("speed", [0.0, -5.0, float("nan"), float("inf")])
+def test_route_rules_reject_invalid_boat_speed(speed):
+    with pytest.raises(ConfigurationError, match="boat_speed_kmh"):
+        RouteRules(boat_speed_kmh=speed)

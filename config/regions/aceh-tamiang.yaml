@@ -129,3 +129,6 @@ evacuation: # owner decisions 2026-10-16: every facility type, 10 km by road
   safety_margin_m: 1.0
   max_distance_m: 10000
   walk_speed_kmh: 4.0
+
+routing: # owner decision 2026-10-16: rescue boat speed on flood water
+  boat_speed_kmh: 10.0

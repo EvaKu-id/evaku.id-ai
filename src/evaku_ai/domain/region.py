@@ -13,6 +13,7 @@ from evaku_ai.domain.rules import (
     IsolationRules,
     PassabilityThresholds,
     RoadNetworkRules,
+    RouteRules,
     ScoreWeights,
 )
 
@@ -162,6 +163,10 @@ class EvacuationOverride(_Model):
     site_types: tuple[FacilityType, ...] | None = None
 
 
+class RouteOverride(_Model):
+    boat_speed_kmh: float | None = None
+
+
 class ScoreWeightsOverride(_Model):
     isolated_population: float
     vulnerable_share: float
@@ -189,6 +194,7 @@ class RegionConfig(_Model):
     facility_override: FacilityOverride | None = Field(default=None, alias="facilities")
     hand_override: HandOverride | None = Field(default=None, alias="hand")
     evacuation_override: EvacuationOverride | None = Field(default=None, alias="evacuation")
+    route_override: RouteOverride | None = Field(default=None, alias="routing")
     bpbd_locations: list[ManualLocation] = Field(default_factory=list)
 
     @model_validator(mode="after")
@@ -212,6 +218,7 @@ class RegionConfig(_Model):
             self.facility_rules()
             self.hand_rules()
             self.evacuation_rules()
+            self.route_rules()
         except ConfigurationError as exc:
             raise ValueError(str(exc)) from exc
         return self
@@ -256,6 +263,11 @@ class RegionConfig(_Model):
         if self.evacuation_override is None:
             return EvacuationRules()
         return EvacuationRules(**self.evacuation_override.model_dump(exclude_none=True))
+
+    def route_rules(self) -> RouteRules:
+        if self.route_override is None:
+            return RouteRules()
+        return RouteRules(**self.route_override.model_dump(exclude_none=True))
 
     def weights(self) -> ScoreWeights:
         if self.score_weights is None:

@@ -5,6 +5,7 @@ from fastapi import Depends, Header, HTTPException, Request, status
 
 from evaku_ai.api.cache import SimulationCache
 from evaku_ai.core.config import Settings, get_settings
+from evaku_ai.engine.graph import RoadGeometry
 from evaku_ai.engine.simulation import ScenarioData
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
@@ -27,6 +28,11 @@ def get_scenario(request: Request) -> ScenarioData | None:
     return data if isinstance(data, ScenarioData) else None
 
 
+def get_road_geometry(request: Request) -> RoadGeometry | None:
+    geometry = getattr(request.app.state, "road_geometry", None)
+    return geometry if isinstance(geometry, RoadGeometry) else None
+
+
 def get_simulation_cache(request: Request) -> SimulationCache | None:
     cache = getattr(request.app.state, "simulation_cache", None)
     return cache if isinstance(cache, SimulationCache) else None
@@ -37,5 +43,6 @@ def get_data_version(request: Request) -> str:
 
 
 ScenarioDep = Annotated[ScenarioData | None, Depends(get_scenario)]
+GeometryDep = Annotated[RoadGeometry | None, Depends(get_road_geometry)]
 CacheDep = Annotated[SimulationCache | None, Depends(get_simulation_cache)]
 DataVersionDep = Annotated[str, Depends(get_data_version)]

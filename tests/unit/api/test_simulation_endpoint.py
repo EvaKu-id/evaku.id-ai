@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from evaku_ai.api import cache as api_cache
 from evaku_ai.api.app import create_app
-from evaku_ai.api.routers import simulation as simulation_router
 from evaku_ai.core.config import Settings, get_settings
 from evaku_ai.domain.enums import Vehicle
 from evaku_ai.engine.simulation import run_simulation
@@ -93,7 +93,7 @@ def test_repeated_request_uses_cache(sim_client, auth, monkeypatch):
         calls.append(args)
         return run_simulation(*args, **kwargs)
 
-    monkeypatch.setattr(simulation_router, "run_simulation", counting)
+    monkeypatch.setattr(api_cache, "run_simulation", counting)
     first = post(sim_client, auth, water_level_m=1.5).json()
     second = post(sim_client, auth, water_level_m=1.5).json()
     assert len(calls) == 1

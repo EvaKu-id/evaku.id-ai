@@ -8,13 +8,13 @@
 
 Village A is node 4; village B is nodes 2 and 3 (100 people each).
 e1 is low (hand_min 0.5 m): a 1 m water level cuts it, so node 2 and village B are isolated
-by car, while village A stays reachable.
+by car, while village A stays reachable. small_geometry gives e3 a bend so route joins are tested.
 """
 
 import numpy as np
 
 from evaku_ai.engine.accessibility import NO_NODE, NodePopulation
-from evaku_ai.engine.graph import RoadGraph
+from evaku_ai.engine.graph import RoadGeometry, RoadGraph
 from evaku_ai.engine.simulation import ScenarioData
 
 
@@ -28,6 +28,32 @@ def small_graph() -> RoadGraph:
         is_bridge=np.array([False, False, True, False]),
         node_x=np.array([0.0, 1000.0, 2000.0, 2500.0, 1000.0]),
         node_y=np.array([0.0, 0.0, 0.0, 0.0, -1500.0]),
+    )
+
+
+NODE_LON = np.array([98.0, 98.01, 98.02, 98.025, 98.01])
+NODE_LAT = np.array([4.0, 4.0, 4.0, 4.0, 3.985])
+E3_BEND = (98.012, 3.992)
+
+
+def small_geometry() -> RoadGeometry:
+    nodes = np.column_stack([NODE_LON, NODE_LAT])
+    coords = [
+        nodes[0],
+        nodes[1],
+        nodes[1],
+        nodes[2],
+        nodes[2],
+        nodes[3],
+        nodes[1],
+        np.array(E3_BEND),
+        nodes[4],
+    ]
+    return RoadGeometry(
+        node_lon=NODE_LON.copy(),
+        node_lat=NODE_LAT.copy(),
+        edge_offsets=np.array([0, 2, 4, 6, 9]),
+        edge_coords=np.array(coords),
     )
 
 

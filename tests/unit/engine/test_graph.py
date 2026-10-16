@@ -4,8 +4,14 @@ import numpy as np
 import pytest
 
 from evaku_ai.core.errors import InvalidInputError
-from evaku_ai.engine.graph import RoadGraph, to_csr
-from tests.fixtures.small_graph import small_graph
+from evaku_ai.engine.graph import (
+    RoadGeometry,
+    RoadGraph,
+    check_geometry,
+    straight_geometry,
+    to_csr,
+)
+from tests.fixtures.small_graph import NODE_LAT, NODE_LON, small_geometry, small_graph
 
 
 def test_csr_is_symmetric_with_travel_times():
@@ -110,3 +116,60 @@ def test_custom_weights_pick_the_shortest_parallel_edge():
 def test_custom_weights_must_match_and_be_positive(weights):
     with pytest.raises(InvalidInputError, match="weights"):
         to_csr(small_graph(), weights=weights)
+
+
+def _geometry(**changes):
+    geometry = small_geometry()
+    fields = {
+        "node_lon": geometry.node_lon,
+        "node_lat": geometry.node_lat,
+        "edge_offsets": geometry.edge_offsets,
+        "edge_coords": geometry.edge_coords,
+    }
+    return RoadGeometry(**(fields | changes))
+
+
+def test_geometry_counts_nodes_and_edges():
+    geometry = small_geometry()
+    assert (geometry.n_nodes, geometry.n_edges) == (5, 4)
+    check_geometry(small_graph(), geometry)
+
+
+@pytest.mark.parametrize(
+    ("changes", "message"),
+    [
+        ({"node_lat": NODE_LAT[:4]}, "node_lon and node_lat"),
+        ({"edge_offsets": np.array([], dtype=np.int64)}, "non-empty 1-D integer"),
+        ({"edge_offsets": np.array([0.0, 2.0, 4.0, 6.0, 9.0])}, "non-empty 1-D integer"),
+        ({"edge_coords": np.zeros((9, 3))}, "shape \\(n, 2\\)"),
+        ({"edge_offsets": np.array([1, 2, 4, 6, 9])}, "start at 0"),
+        ({"edge_offsets": np.array([0, 2, 4, 6, 8])}, "start at 0"),
+        ({"edge_offsets": np.array([0, 1, 4, 6, 9])}, "at least two"),
+        ({"node_lon": np.array([np.nan, 98.0, 98.0, 98.0, 98.0])}, "finite lon/lat"),
+        ({"node_lat": np.array([95.0, 4.0, 4.0, 4.0, 4.0])}, "finite lon/lat"),
+    ],
+)
+def test_geometry_rejects_invalid_arrays(changes, message):
+    with pytest.raises(InvalidInputError, match=message):
+        _geometry(**changes)
+
+
+def test_check_geometry_rejects_mismatches():
+    graph = small_graph()
+    with pytest.raises(InvalidInputError, match="geometry has 4 nodes"):
+        check_geometry(graph, _geometry(node_lon=NODE_LON[:4], node_lat=NODE_LAT[:4]))
+    reversed_e0 = small_geometry().edge_coords.copy()
+    reversed_e0[[0, 1]] = reversed_e0[[1, 0]]
+    with pytest.raises(InvalidInputError, match="run from node edge_u"):
+        check_geometry(graph, _geometry(edge_coords=reversed_e0))
+
+
+def test_straight_geometry_draws_each_edge_from_u_to_v():
+    graph = small_graph()
+    geometry = straight_geometry(graph, NODE_LON, NODE_LAT)
+    assert geometry.edge_offsets.tolist() == [0, 2, 4, 6, 8]
+    check_geometry(graph, geometry)
+    assert geometry.edge_coords[6:].tolist() == [
+        [NODE_LON[1], NODE_LAT[1]],
+        [NODE_LON[4], NODE_LAT[4]],
+    ]

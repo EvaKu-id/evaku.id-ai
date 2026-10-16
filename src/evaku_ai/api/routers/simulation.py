@@ -3,11 +3,11 @@ import time
 from fastapi import APIRouter
 
 from evaku_ai.api import schemas
-from evaku_ai.api.cache import param_hash
+from evaku_ai.api.cache import cached_simulation
 from evaku_ai.api.dependencies import CacheDep, DataVersionDep, ScenarioDep
 from evaku_ai.api.responses import DATA_NOT_LOADED
 from evaku_ai.core.errors import DataNotLoadedError
-from evaku_ai.engine.simulation import SimulationResult, run_simulation
+from evaku_ai.engine.simulation import SimulationResult
 
 router = APIRouter(tags=["simulation"])
 
@@ -24,13 +24,7 @@ def simulate(
     if scenario is None or cache is None:
         raise DataNotLoadedError("static data is not loaded")
     started = time.perf_counter()
-    key = param_hash(data_version, request)
-    result = cache.get(key)
-    if result is None:
-        result = run_simulation(
-            scenario, request.river_id, request.water_level_m, request.vehicle, request.hub_ids
-        )
-        cache.put(key, result)
+    key, result = cached_simulation(cache, scenario, data_version, request)
     elapsed_ms = round((time.perf_counter() - started) * MS_PER_S)
     return _to_response(result, key, data_version, elapsed_ms)
 

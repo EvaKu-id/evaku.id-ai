@@ -135,8 +135,14 @@
               }
             }
           },
+          "404": {
+            "description": "Unknown village_id, or param_hash not cached and no simulation given"
+          },
           "501": {
-            "description": "Not implemented"
+            "description": "Routing on a published run (run_id) is not available yet"
+          },
+          "503": {
+            "description": "Static data is not loaded"
           },
           "422": {
             "description": "Validation Error",
@@ -416,6 +422,14 @@
         ],
         "title": "RoadCorrection"
       },
+      "RouteMode": {
+        "type": "string",
+        "enum": [
+          "land",
+          "land_boat"
+        ],
+        "title": "RouteMode"
+      },
       "RouteRequest": {
         "properties": {
           "village_id": {
@@ -453,7 +467,8 @@
           "param_hash": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[0-9a-f]{16}$"
               },
               {
                 "type": "null"
@@ -461,6 +476,17 @@
             ],
             "title": "Param Hash",
             "description": "Route on a cached simulation"
+          },
+          "simulation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SimulationRequest"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The /simulation request behind param_hash; lets any instance rebuild a result it has not cached"
           }
         },
         "additionalProperties": false,
@@ -486,12 +512,7 @@
             "title": "Minutes"
           },
           "mode": {
-            "type": "string",
-            "enum": [
-              "land",
-              "land_boat"
-            ],
-            "title": "Mode"
+            "$ref": "#/components/schemas/RouteMode"
           },
           "boat_point": {
             "anyOf": [

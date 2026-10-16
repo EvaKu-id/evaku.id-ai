@@ -111,3 +111,6 @@ evacuation: # candidate sites need hand >= water level + safety margin
   safety_margin_m: 1.0
   max_distance_m: 10000
   walk_speed_kmh: 4.0
+
+routing: # boat leg of land + boat routes
+  boat_speed_kmh: 10.0

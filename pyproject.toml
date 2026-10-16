@@ -90,6 +90,7 @@ extend-immutable-calls = [
     "evaku_ai.domain.rules.IsolationRules",
     "evaku_ai.domain.rules.PassabilityThresholds",
     "evaku_ai.domain.rules.RoadNetworkRules",
+    "evaku_ai.domain.rules.RouteRules",
     "evaku_ai.domain.rules.ScoreWeights",
 ]
 

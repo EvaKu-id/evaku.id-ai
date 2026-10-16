@@ -6,7 +6,7 @@ import pytest
 from evaku_ai.adapters import bundle
 from evaku_ai.core.errors import DataNotLoadedError, InvalidInputError
 from evaku_ai.engine.bundle import bundle_to_arrays
-from evaku_ai.engine.synthetic import synthetic_scenario
+from evaku_ai.engine.synthetic import synthetic_geometry, synthetic_scenario
 from tests.fixtures.evacuation import sample_sites
 
 VERSION = "2026-10-16.1"
@@ -16,6 +16,7 @@ def _write(tmp_path, version=VERSION):
     return bundle.write_bundle(
         synthetic_scenario(),
         sample_sites(),
+        synthetic_geometry(synthetic_scenario()),
         tmp_path / "static",
         data_version=version,
         region_id="aceh-tamiang",
@@ -37,8 +38,10 @@ def test_round_trip(tmp_path):
     assert loaded.manifest.region_id == "aceh-tamiang"
     assert loaded.manifest.counts["edges"] == synthetic_scenario().graph.n_edges
     assert loaded.manifest.counts["evacuation_sites"] == 2
-    original = bundle_to_arrays(synthetic_scenario(), sample_sites())
-    for key, values in bundle_to_arrays(loaded.data, loaded.sites).items():
+    original = bundle_to_arrays(
+        synthetic_scenario(), sample_sites(), synthetic_geometry(synthetic_scenario())
+    )
+    for key, values in bundle_to_arrays(loaded.data, loaded.sites, loaded.geometry).items():
         np.testing.assert_array_equal(values, original[key])
 
 
@@ -105,7 +108,11 @@ def _replace_arrays(path, **arrays):
 
 def test_pickled_objects_are_refused(tmp_path):
     path = _write(tmp_path)
-    arrays = dict(bundle_to_arrays(synthetic_scenario(), sample_sites()))
+    arrays = dict(
+        bundle_to_arrays(
+            synthetic_scenario(), sample_sites(), synthetic_geometry(synthetic_scenario())
+        )
+    )
     arrays["rivers"] = np.array([{"river": 1}], dtype=object)
     _replace_arrays(path, **arrays)
     with pytest.raises(DataNotLoadedError, match="invalid"):
@@ -114,7 +121,11 @@ def test_pickled_objects_are_refused(tmp_path):
 
 def test_arrays_that_do_not_form_a_scenario_are_refused(tmp_path):
     path = _write(tmp_path)
-    arrays = dict(bundle_to_arrays(synthetic_scenario(), sample_sites()))
+    arrays = dict(
+        bundle_to_arrays(
+            synthetic_scenario(), sample_sites(), synthetic_geometry(synthetic_scenario())
+        )
+    )
     arrays.pop("hand_min")
     _replace_arrays(path, **arrays)
     with pytest.raises(DataNotLoadedError, match="hand_min"):

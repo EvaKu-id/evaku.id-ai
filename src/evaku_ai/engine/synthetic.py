@@ -2,7 +2,7 @@ import numpy as np
 
 from evaku_ai.domain.arrays import BoolArray, FloatArray, IntArray
 from evaku_ai.engine.accessibility import NodePopulation
-from evaku_ai.engine.graph import RoadGraph
+from evaku_ai.engine.graph import RoadGeometry, RoadGraph, straight_geometry
 from evaku_ai.engine.simulation import ScenarioData
 
 GRID = 30
@@ -23,6 +23,9 @@ HUBS = {1: (0, 0), 2: (GRID - 1, 0)}
 HEALTH_CELLS = ((5, 5), (15, 25), (25, 20))
 RIVER_ID = "synthetic-river"
 SEED = 7
+ORIGIN_LON = 98.0
+ORIGIN_LAT = 4.3
+M_PER_DEG = 111_320.0
 
 
 def synthetic_scenario() -> ScenarioData:
@@ -69,6 +72,13 @@ def synthetic_scenario() -> ScenarioData:
         health_nodes=health_nodes,
         health_hand=_hand(node_x[health_nodes], rng),
         health_river=np.zeros(health_nodes.shape[0], dtype=np.int64),
+    )
+
+
+def synthetic_geometry(data: ScenarioData) -> RoadGeometry:
+    graph = data.graph
+    return straight_geometry(
+        graph, ORIGIN_LON + graph.node_x / M_PER_DEG, ORIGIN_LAT + graph.node_y / M_PER_DEG
     )
 
 

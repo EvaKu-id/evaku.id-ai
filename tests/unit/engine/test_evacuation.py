@@ -11,7 +11,6 @@ from evaku_ai.engine.evacuation import (
     nearest_safe_sites,
     plan_evacuation,
     safe_sites,
-    village_origins,
 )
 from evaku_ai.engine.graph import RoadGraph
 from evaku_ai.engine.simulation import ScenarioData
@@ -82,18 +81,6 @@ def _by_village(plan):
     for row in plan.sites:
         rows.setdefault(row.village_id, []).append(row)
     return rows
-
-
-def test_village_origins_pick_the_most_populated_node():
-    population = NodePopulation(
-        village=np.array([0, 0, 1, 1, NO_NODE]),
-        total=np.array([5.0, 9.0, 4.0, 4.0, 99.0]),
-        under5=np.zeros(5),
-        elderly=np.zeros(5),
-    )
-    assert village_origins(population, 3).tolist() == [1, 2, NO_NODE]
-    empty = NodePopulation(np.full(2, NO_NODE), np.ones(2), np.zeros(2), np.zeros(2))
-    assert village_origins(empty, 1).tolist() == [NO_NODE]
 
 
 def test_safe_sites_need_margin_and_allowed_type():

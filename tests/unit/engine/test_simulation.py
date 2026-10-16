@@ -3,6 +3,7 @@ import pytest
 
 from evaku_ai.core.errors import InvalidInputError
 from evaku_ai.domain.enums import RoadCondition, Vehicle, VillageAccessStatus
+from evaku_ai.engine.flooding import depth_from_water_level, edge_status
 from evaku_ai.engine.simulation import run_simulation
 from tests.fixtures.small_graph import small_scenario
 
@@ -108,3 +109,12 @@ def test_rejects_unknown_ids(kwargs, message):
 def test_scenario_data_rejects_invalid_arrays(changes, message):
     with pytest.raises(InvalidInputError, match=message):
         small_scenario(**changes)
+
+
+def test_result_keeps_edge_status_and_hubs_for_routing():
+    scenario = small_scenario(hub_nodes={10: 0, 11: 3})
+    result = run_simulation(scenario, "r1", 1.0, Vehicle.CAR, [11, 11])
+    expected, _ = edge_status(scenario.graph, depth_from_water_level(scenario.graph.hand_min, 1.0))
+    np.testing.assert_array_equal(result.edge_status, expected)
+    assert result.hub_nodes == {11: 3}
+    assert run_simulation(scenario, "r1", 1.0, Vehicle.CAR).hub_nodes == {10: 0, 11: 3}

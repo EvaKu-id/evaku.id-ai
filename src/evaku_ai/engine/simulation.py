@@ -1,4 +1,5 @@
-from dataclasses import dataclass, replace
+from collections.abc import Mapping
+from dataclasses import dataclass, field, replace
 
 import numpy as np
 
@@ -73,6 +74,8 @@ class SimulationResult:
     villages: list[VillageResult]
     summary: AccessSummary
     scores: ScoreResult
+    edge_status: StatusArray = field(compare=False)
+    hub_nodes: Mapping[int, int] = field(compare=False)
 
 
 def run_simulation(
@@ -94,7 +97,7 @@ def run_simulation(
 
     depth = depth_from_water_level(graph.hand_min, water_level_m, data.edge_river == river)
     status, depth = edge_status(graph, depth, thresholds)
-    access = access_times(graph, status, hubs)
+    access = access_times(graph, status, np.array(list(hubs.values()), dtype=np.int64))
 
     flooded_node = _flooded(data.node_hand, data.node_river == river, water_level_m)
     villages = classify_villages(access, data.population, flooded_node, data.village_ids, isolation)
@@ -125,16 +128,18 @@ def run_simulation(
             cut_road_km=_blocked_km(graph, status, vehicle),
         ),
         scores=scores,
+        edge_status=status,
+        hub_nodes=hubs,
     )
 
 
-def _hub_nodes(data: ScenarioData, hub_ids: list[int] | None) -> IntArray:
+def _hub_nodes(data: ScenarioData, hub_ids: list[int] | None) -> dict[int, int]:
     if not hub_ids:
-        return np.array(list(data.hub_nodes.values()), dtype=np.int64)
+        return dict(data.hub_nodes)
     unknown = sorted(set(hub_ids) - set(data.hub_nodes))
     if unknown:
         raise InvalidInputError(f"unknown hub_ids {unknown}")
-    return np.array([data.hub_nodes[hub_id] for hub_id in hub_ids], dtype=np.int64)
+    return {hub_id: data.hub_nodes[hub_id] for hub_id in sorted(set(hub_ids))}
 
 
 def _flooded(hand: FloatArray, connected: BoolArray, water_level_m: float) -> BoolArray:

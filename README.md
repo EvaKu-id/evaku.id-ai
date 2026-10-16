@@ -106,10 +106,10 @@ Static data is released to R2 `data/static/{version}/`; model packages come from
 Release static data (needs the `R2_*` settings in `.env`; a version is never overwritten):
 
 ```bash
-uv run evaku-static build-bundle 2026-10-16.2      # engine bundle in data/static/{version}/
-uv run evaku-static release 2026-10-16.2           # stage geo/ + README + release.json, upload to R2
-uv run evaku-static release 2026-10-16.2 --resume  # finish a partial upload of the same version
-uv run evaku-static verify-release 2026-10-16.2    # download it again and check every SHA-256
+uv run evaku-static build-bundle 2026-10-16.3      # engine bundle in data/static/{version}/
+uv run evaku-static release 2026-10-16.3           # stage geo/ + README + release.json, upload to R2
+uv run evaku-static release 2026-10-16.3 --resume  # finish a partial upload of the same version
+uv run evaku-static verify-release 2026-10-16.3    # download it again and check every SHA-256
 ```
 
 `data/static/latest.json` in the bucket points to the newest release. The API downloads

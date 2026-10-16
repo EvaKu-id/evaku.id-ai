@@ -18,7 +18,7 @@ from evaku_ai.api.routers import health, recalc, route, simulation
 from evaku_ai.core.config import Settings, get_settings
 from evaku_ai.core.errors import ConfigurationError, DataNotLoadedError, InvalidInputError
 from evaku_ai.core.logging import configure_logging
-from evaku_ai.engine.synthetic import synthetic_scenario
+from evaku_ai.engine.synthetic import synthetic_geometry, synthetic_scenario
 
 log = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.simulation_cache = SimulationCache(settings.simulation_cache_size)
     if settings.engine_data == "synthetic":
         app.state.engine_data = synthetic_scenario()
+        app.state.road_geometry = synthetic_geometry(app.state.engine_data)
         app.state.data_version = "synthetic"
         log.warning("serving generated synthetic data, not a real region")
     else:
@@ -60,6 +61,7 @@ def ensure_bundle(settings: Settings) -> Path:
 
 def _load_bundle(app: FastAPI, settings: Settings) -> None:
     app.state.engine_data = None
+    app.state.road_geometry = None
     app.state.data_version = settings.data_version
     started = time.perf_counter()
     try:
@@ -70,6 +72,7 @@ def _load_bundle(app: FastAPI, settings: Settings) -> None:
         log.warning("static data bundle not loaded (%s); simulation returns 503", exc)
         return
     app.state.engine_data = loaded.data
+    app.state.road_geometry = loaded.geometry
     app.state.data_version = loaded.manifest.data_version
     log.info(
         "loaded bundle %s (%d edges, %d villages) in %.2f s",

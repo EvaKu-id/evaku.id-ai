@@ -7,6 +7,7 @@ from pathlib import Path
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import shapely
 
 from evaku_ai.adapters.bundle import check_version, write_bundle
 from evaku_ai.adapters.download import file_sha256
@@ -17,11 +18,13 @@ from evaku_ai.domain.enums import FacilityType, LocationSource
 from evaku_ai.domain.region import RegionConfig
 from evaku_ai.engine.accessibility import NO_NODE, NodePopulation
 from evaku_ai.engine.evacuation import EvacuationSites
+from evaku_ai.engine.graph import RoadGeometry, check_geometry
 from evaku_ai.engine.simulation import ScenarioData
-from evaku_ai.static_data.builders.graph import to_road_graph
+from evaku_ai.static_data.builders.graph import WGS84, to_road_graph
 
 log = logging.getLogger(__name__)
 
+COORD_DECIMALS = 6  # matches ROUTE_PRECISION_DEG
 HEALTH_TYPES = (FacilityType.HEALTH_CENTER.value, FacilityType.HOSPITAL.value)
 INPUTS = (
     "road_nodes.parquet",
@@ -91,6 +94,28 @@ def assemble_sites(processed_dir: Path) -> EvacuationSites:
     )
 
 
+def assemble_geometry(processed_dir: Path) -> RoadGeometry:
+    tables = _tables(processed_dir)
+    nodes, segments = tables["road_nodes"], tables["road_segments"]
+    if not np.array_equal(nodes["node_id"].to_numpy(), np.arange(len(nodes))):
+        raise InvalidInputError("road_nodes node_id must run 0..n-1 in order")
+    if not np.array_equal(segments["edge_id"].to_numpy(), np.arange(len(segments))):
+        raise InvalidInputError("road_segments edge_id must run 0..n-1 in order")
+    lines = segments.geometry.to_crs(WGS84).to_numpy()
+    counts = shapely.get_num_coordinates(lines)
+    points = np.round(
+        shapely.get_coordinates(nodes.geometry.to_crs(WGS84).to_numpy()), COORD_DECIMALS
+    )
+    geometry = RoadGeometry(
+        node_lon=points[:, 0],
+        node_lat=points[:, 1],
+        edge_offsets=np.concatenate([[0], np.cumsum(counts)]).astype(np.int64),
+        edge_coords=np.round(shapely.get_coordinates(lines), COORD_DECIMALS),
+    )
+    check_geometry(to_road_graph(nodes, segments), geometry)
+    return geometry
+
+
 def build(
     region_path: Path,
     version: str,
@@ -101,14 +126,22 @@ def build(
     region = load_region(region_path)
     data = assemble_scenario(processed_dir, region)
     sites = assemble_sites(processed_dir)
+    geometry = assemble_geometry(processed_dir)
     sources = {name: file_sha256(processed_dir / name) for name in INPUTS}
     out = write_bundle(
-        data, sites, static_dir, data_version=version, region_id=region.region_id, sources=sources
+        data,
+        sites,
+        geometry,
+        static_dir,
+        data_version=version,
+        region_id=region.region_id,
+        sources=sources,
     )
     log.info(
-        "bundle %s: %d edges, %d nodes, %d villages, %d hubs",
+        "bundle %s: %d edges (%d vertices), %d nodes, %d villages, %d hubs",
         version,
         data.graph.n_edges,
+        len(geometry.edge_coords),
         data.graph.n_nodes,
         len(data.village_ids),
         len(data.hub_nodes),

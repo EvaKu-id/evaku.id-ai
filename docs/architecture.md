@@ -77,11 +77,15 @@ training and in the pipeline. This repo pins both.
 1. `static_data` builds the graph, HAND, population, and facilities, then releases them to R2
    `data/static/{version}/`.
 2. The `api` image loads that bundle into memory at startup. Its engine part is `scenario.npz`
-   (plain arrays, no geometry, read without pickle and without pyarrow) plus `manifest.json`
+   (plain arrays plus lon/lat of every road node and road vertex, read without pickle and without
+   pyarrow) plus `manifest.json`
    (version, SHA-256, counts, source checksums). In production a missing or mismatched bundle stops
    startup. `/simulation` turns a water level
-   into road status, reachability, and isolated villages; `/route` returns a land or land + boat
-   route.
+   into road status, reachability, and isolated villages; `/route` reuses that cached road status
+   (or rebuilds it from the `simulation` parameters sent along) and returns the fastest land route
+   from a hub to the village's most populated node. When the village cannot be reached, the land
+   route ends at the nearest reachable node (the boat point) and the straight-line water distance
+   is added at the boat speed from the region config.
 3. `pipeline` runs forecast (Open-Meteo + GEE features -> LightGBM -> water level -> engine) and
    radar (Sentinel-1 -> U-Net -> depth -> engine), writes one run per radar scene or forecast
    horizon as `draft`, flips it to `published` in the same transaction, uploads flood PMTiles,
@@ -100,7 +104,8 @@ depth comes from.
 - Model packages: R2 `model/{version}/`, selected with `MODEL_VERSION`, verified against
   `manifest.json` checksums.
 - Static data: R2 `evaku-private/data/static/{version}/` (version like `2026-10-16.2`, never overwritten):
-  `manifest.json` + `scenario.npz` for the `api` image (downloaded at startup when absent), `geo/` with
+  `manifest.json` + `scenario.npz` for the `api` image (bundle format 3: engine arrays plus road
+  geometry in lon/lat; downloaded at startup when absent), `geo/` with
   GeoParquet, `hand.tif`, build metadata, and `village_static_features.csv` for the pipeline and ML,
   `README.md` with attributions, and `release.json` (every file with size and SHA-256, plus git commit and
   dirty flag). `release.json` is uploaded last, so its presence marks a complete release.

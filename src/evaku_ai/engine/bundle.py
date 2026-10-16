@@ -6,10 +6,10 @@ import numpy.typing as npt
 from evaku_ai.core.errors import InvalidInputError
 from evaku_ai.engine.accessibility import NodePopulation
 from evaku_ai.engine.evacuation import EvacuationSites
-from evaku_ai.engine.graph import RoadGraph
+from evaku_ai.engine.graph import RoadGeometry, RoadGraph, check_geometry
 from evaku_ai.engine.simulation import ScenarioData
 
-BUNDLE_FORMAT = 2
+BUNDLE_FORMAT = 3
 
 Array = npt.NDArray[np.int64 | np.float64 | np.bool_ | np.str_]
 Arrays = Mapping[str, Array]
@@ -27,6 +27,7 @@ INT_KEYS = (
     "health_river",
     "site_facility_ids",
     "site_nodes",
+    "edge_coord_offsets",
 )
 FLOAT_KEYS = (
     "travel_s",
@@ -40,13 +41,18 @@ FLOAT_KEYS = (
     "population_elderly",
     "health_hand",
     "site_hand",
+    "node_lon",
+    "node_lat",
+    "edge_coords",
 )
 BOOL_KEYS = ("is_bridge", "site_preferred")
 STR_KEYS = ("rivers", "village_ids", "site_types")
 KEYS = frozenset(INT_KEYS + FLOAT_KEYS + BOOL_KEYS + STR_KEYS)
 
 
-def bundle_to_arrays(data: ScenarioData, sites: EvacuationSites) -> dict[str, Array]:
+def bundle_to_arrays(
+    data: ScenarioData, sites: EvacuationSites, geometry: RoadGeometry
+) -> dict[str, Array]:
     graph, population = data.graph, data.population
     return {
         "edge_u": graph.edge_u,
@@ -77,10 +83,14 @@ def bundle_to_arrays(data: ScenarioData, sites: EvacuationSites) -> dict[str, Ar
         "site_hand": sites.hand,
         "site_types": np.array(sites.types, dtype=str),
         "site_preferred": sites.preferred,
+        "node_lon": geometry.node_lon,
+        "node_lat": geometry.node_lat,
+        "edge_coord_offsets": geometry.edge_offsets,
+        "edge_coords": geometry.edge_coords,
     }
 
 
-def bundle_from_arrays(arrays: Arrays) -> tuple[ScenarioData, EvacuationSites]:
+def bundle_from_arrays(arrays: Arrays) -> tuple[ScenarioData, EvacuationSites, RoadGeometry]:
     missing, extra = KEYS - set(arrays), set(arrays) - KEYS
     if missing or extra:
         raise InvalidInputError(
@@ -126,7 +136,14 @@ def bundle_from_arrays(arrays: Arrays) -> tuple[ScenarioData, EvacuationSites]:
         types=texts["site_types"],
         preferred=_bools(arrays["site_preferred"], "site_preferred"),
     )
-    return data, sites
+    geometry = RoadGeometry(
+        node_lon=floats["node_lon"],
+        node_lat=floats["node_lat"],
+        edge_offsets=ints["edge_coord_offsets"],
+        edge_coords=floats["edge_coords"],
+    )
+    check_geometry(data.graph, geometry)
+    return data, sites, geometry
 
 
 def _ints(values: Array, key: str) -> npt.NDArray[np.int64]:

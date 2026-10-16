@@ -1,8 +1,9 @@
 import numpy as np
 
 from evaku_ai.domain.enums import Vehicle, VillageAccessStatus
+from evaku_ai.engine.graph import check_geometry
 from evaku_ai.engine.simulation import run_simulation
-from evaku_ai.engine.synthetic import RIVER_ID, synthetic_scenario
+from evaku_ai.engine.synthetic import RIVER_ID, synthetic_geometry, synthetic_scenario
 
 
 def test_synthetic_scenario_is_deterministic():
@@ -25,3 +26,10 @@ def test_high_water_isolates_the_far_bank():
     assert statuses.count(VillageAccessStatus.FULLY_ISOLATED) > 0
     assert statuses[0] is VillageAccessStatus.REACHABLE
     assert result.summary.isolated_population > 0
+
+
+def test_synthetic_geometry_matches_the_graph():
+    scenario = synthetic_scenario()
+    geometry = synthetic_geometry(scenario)
+    check_geometry(scenario.graph, geometry)
+    assert geometry.node_lon.min() == 98.0 and geometry.node_lat.min() == 4.3

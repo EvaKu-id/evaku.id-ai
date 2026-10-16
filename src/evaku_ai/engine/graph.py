@@ -55,6 +55,73 @@ class RoadGraph:
         return int(self.edge_u.shape[0])
 
 
+ENDPOINT_TOLERANCE_DEG = 1e-6
+MAX_LON = 180.0
+MAX_LAT = 90.0
+
+
+@dataclass(frozen=True)
+class RoadGeometry:
+    # Lon/lat in EPSG:4326. Edge i runs from node edge_u[i] to edge_v[i] along
+    # edge_coords[edge_offsets[i]:edge_offsets[i + 1]].
+    node_lon: FloatArray
+    node_lat: FloatArray
+    edge_offsets: IntArray
+    edge_coords: FloatArray
+
+    def __post_init__(self) -> None:
+        if self.node_lon.ndim != 1 or self.node_lon.shape != self.node_lat.shape:
+            raise InvalidInputError("node_lon and node_lat must be 1-D with the same length")
+        offsets = self.edge_offsets
+        if offsets.ndim != 1 or not offsets.size or not np.issubdtype(offsets.dtype, np.integer):
+            raise InvalidInputError("edge_offsets must be a non-empty 1-D integer array")
+        if self.edge_coords.ndim != 2 or self.edge_coords.shape[1] != 2:
+            raise InvalidInputError("edge_coords must have shape (n, 2)")
+        if offsets[0] != 0 or offsets[-1] != self.edge_coords.shape[0]:
+            raise InvalidInputError("edge_offsets must start at 0 and end at the number of coords")
+        if np.any(np.diff(offsets) < 2):
+            raise InvalidInputError("every edge needs at least two coordinates")
+        lon = np.concatenate([self.node_lon, self.edge_coords[:, 0]])
+        lat = np.concatenate([self.node_lat, self.edge_coords[:, 1]])
+        finite = np.all(np.isfinite(lon)) and np.all(np.isfinite(lat))
+        if not finite or np.any(np.abs(lon) > MAX_LON) or np.any(np.abs(lat) > MAX_LAT):
+            raise InvalidInputError("coordinates must be finite lon/lat in EPSG:4326")
+
+    @property
+    def n_nodes(self) -> int:
+        return int(self.node_lon.shape[0])
+
+    @property
+    def n_edges(self) -> int:
+        return int(self.edge_offsets.shape[0] - 1)
+
+
+def check_geometry(graph: RoadGraph, geometry: RoadGeometry) -> None:
+    if geometry.n_nodes != graph.n_nodes or geometry.n_edges != graph.n_edges:
+        raise InvalidInputError(
+            f"geometry has {geometry.n_nodes} nodes and {geometry.n_edges} edges, "
+            f"graph has {graph.n_nodes} and {graph.n_edges}"
+        )
+    nodes = np.column_stack([geometry.node_lon, geometry.node_lat])
+    first = geometry.edge_coords[geometry.edge_offsets[:-1]]
+    last = geometry.edge_coords[geometry.edge_offsets[1:] - 1]
+    starts = np.allclose(first, nodes[graph.edge_u], rtol=0, atol=ENDPOINT_TOLERANCE_DEG)
+    ends = np.allclose(last, nodes[graph.edge_v], rtol=0, atol=ENDPOINT_TOLERANCE_DEG)
+    if not (starts and ends):
+        raise InvalidInputError("edge geometry must run from node edge_u to node edge_v")
+
+
+def straight_geometry(graph: RoadGraph, node_lon: FloatArray, node_lat: FloatArray) -> RoadGeometry:
+    nodes = np.column_stack([node_lon, node_lat]).astype(np.float64)
+    ends = np.stack([nodes[graph.edge_u], nodes[graph.edge_v]], axis=1)
+    return RoadGeometry(
+        node_lon=np.asarray(node_lon, dtype=np.float64),
+        node_lat=np.asarray(node_lat, dtype=np.float64),
+        edge_offsets=np.arange(0, 2 * graph.n_edges + 1, 2, dtype=np.int64),
+        edge_coords=ends.reshape(-1, 2),
+    )
+
+
 def to_csr(
     graph: RoadGraph, passable: BoolArray | None = None, weights: FloatArray | None = None
 ) -> sparse.csr_matrix:

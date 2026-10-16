@@ -9,7 +9,7 @@ from evaku_ai.domain.arrays import BoolArray, FloatArray, IntArray
 from evaku_ai.domain.enums import Vehicle
 from evaku_ai.domain.models import EvacuationPlan, EvacuationSite
 from evaku_ai.domain.rules import EvacuationRules, PassabilityThresholds
-from evaku_ai.engine.accessibility import NO_NODE, NodePopulation
+from evaku_ai.engine.accessibility import NO_NODE, village_origins
 from evaku_ai.engine.flooding import depth_from_water_level, edge_status, passable_edges
 from evaku_ai.engine.graph import to_csr
 from evaku_ai.engine.routing import edge_lookup, path_edges, path_from_predecessors
@@ -58,19 +58,6 @@ class _Reach:
     safe: BoolArray
     usable: BoolArray
     lookup: dict[tuple[int, int], int]
-
-
-def village_origins(population: NodePopulation, n_villages: int) -> IntArray:
-    origins = np.full(n_villages, NO_NODE, dtype=np.int64)
-    nodes = np.flatnonzero(population.village != NO_NODE)
-    if not nodes.size:
-        return origins
-    # Sorted so the last node of each village is its most populated one (ties: lowest node_id).
-    order = nodes[np.lexsort((-nodes, population.total[nodes], population.village[nodes]))]
-    village = population.village[order]
-    last = np.append(village[1:] != village[:-1], True)
-    origins[village[last]] = order[last]
-    return origins
 
 
 def safe_sites(sites: EvacuationSites, water_level_m: float, rules: EvacuationRules) -> BoolArray:

@@ -44,9 +44,9 @@ ditimpa; versi baru selalu memakai nomor baru. Penunjuk versi terbaru ada di `{L
 {rows}
 
 `release.json` (di folder yang sama) memuat ukuran dan SHA-256 semua file di atas. `manifest.json`
-dan `scenario.npz` adalah bundle untuk API model (larik mesin akses, tanpa geometri). Semua file di
-`geo/` memakai `village_id` kode BPS sebagai kunci desa. File bergeometri berformat GeoParquet
-(EPSG:4326), kecuali `hand.tif` (HAND 30 m, EPSG:32647, nodata -9999).
+dan `scenario.npz` adalah bundle untuk API model (larik mesin akses dan koordinat ruas untuk
+rute). Semua file di `geo/` memakai `village_id` kode BPS sebagai kunci desa. File bergeometri
+berformat GeoParquet (EPSG:4326), kecuali `hand.tif` (HAND 30 m, EPSG:32647, nodata -9999).
 
 ## `geo/village_static_features.csv`
 

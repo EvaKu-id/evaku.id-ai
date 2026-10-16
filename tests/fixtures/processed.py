@@ -6,7 +6,7 @@ from shapely.geometry import LineString, box
 
 from evaku_ai.adapters.bundle import write_bundle
 from evaku_ai.adapters.download import file_sha256
-from evaku_ai.engine.synthetic import synthetic_scenario
+from evaku_ai.engine.synthetic import synthetic_geometry, synthetic_scenario
 from evaku_ai.static_data.builders.bundle import INPUTS
 from evaku_ai.static_data.release import GEO_FILES, META_FILES
 from tests.fixtures.evacuation import sample_sites
@@ -72,6 +72,7 @@ def make_release_bundle(processed_dir: Path, static_dir: Path, version: str) -> 
     return write_bundle(
         synthetic_scenario(),
         sample_sites(),
+        synthetic_geometry(synthetic_scenario()),
         static_dir,
         data_version=version,
         region_id="aceh-tamiang",

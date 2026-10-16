@@ -14,6 +14,7 @@ from evaku_ai.domain.rules import (
     IsolationRules,
     PassabilityThresholds,
     RoadNetworkRules,
+    RouteRules,
     ScoreWeights,
 )
 from tests.fixtures.region import VALID
@@ -89,6 +90,11 @@ def test_hand_override_keeps_unset_defaults():
     rules = config(hand={"stream_threshold_km2": 2.5}).hand_rules()
     assert rules.stream_threshold_km2 == 2.5
     assert rules.cell_size_m == HandRules().cell_size_m
+
+
+def test_route_override():
+    assert config().route_rules() == RouteRules()
+    assert config(routing={"boat_speed_kmh": 6.0}).route_rules().boat_speed_kmh == 6.0
 
 
 def test_evacuation_override():
@@ -189,6 +195,8 @@ def _population(**changes):
         ({"hand": {"stream_threshold_km2": 0}}, "> 0"),
         ({"hand": {"surprise": 1}}, "Extra inputs"),
         ({"evacuation": {"max_sites": 5}}, "max_sites"),
+        ({"routing": {"boat_speed_kmh": 0}}, "boat_speed_kmh"),
+        ({"routing": {"surprise": 1}}, "Extra inputs"),
         ({"evacuation": {"site_types": ["bunker"]}}, "site_types"),
         ({"passability_cm": {"car_cm": 70, "truck_cm": 60}}, "car_cm <= truck_cm"),
         ({"score_weights": {**WEIGHTS, "isolated_population": 0.5}}, "sum to 1"),

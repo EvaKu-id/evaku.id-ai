@@ -15,6 +15,7 @@ from evaku_ai.engine.accessibility import (
     health_access_gap,
     node_impact,
     travel_time_from_hubs,
+    village_origins,
 )
 from evaku_ai.engine.flooding import bridge_approach_depth, depth_from_water_level, road_status
 from evaku_ai.engine.graph import RoadGraph, to_csr
@@ -342,3 +343,15 @@ def test_component_helpers_check_population():
     access = access_times(small_graph(), BRIDGE_CUT, HUB_NODES)
     with pytest.raises(InvalidInputError, match="out of range"):
         access_difficulty(access, small_population(), 1)
+
+
+def test_village_origins_pick_the_most_populated_node():
+    population = NodePopulation(
+        village=np.array([0, 0, 1, 1, NO_NODE]),
+        total=np.array([5.0, 9.0, 4.0, 4.0, 99.0]),
+        under5=np.zeros(5),
+        elderly=np.zeros(5),
+    )
+    assert village_origins(population, 3).tolist() == [1, 2, NO_NODE]
+    empty = NodePopulation(np.full(2, NO_NODE), np.ones(2), np.zeros(2), np.zeros(2))
+    assert village_origins(empty, 1).tolist() == [NO_NODE]

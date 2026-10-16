@@ -59,6 +59,19 @@ class FacilityAccess:
     reachable: dict[Vehicle, BoolArray]
 
 
+def village_origins(population: NodePopulation, n_villages: int) -> IntArray:
+    origins = np.full(n_villages, NO_NODE, dtype=np.int64)
+    nodes = np.flatnonzero(population.village != NO_NODE)
+    if not nodes.size:
+        return origins
+    # Sorted so the last node of each village is its most populated one (ties: lowest node_id).
+    order = nodes[np.lexsort((-nodes, population.total[nodes], population.village[nodes]))]
+    village = population.village[order]
+    last = np.append(village[1:] != village[:-1], True)
+    origins[village[last]] = order[last]
+    return origins
+
+
 def travel_time_from_hubs(csr: sparse.csr_matrix, hub_nodes: IntArray) -> Reachability:
     hubs = _validate_hubs(hub_nodes, csr.shape[0])
     # to_csr builds a symmetric matrix, so directed search skips scipy's symmetrizing copy.
